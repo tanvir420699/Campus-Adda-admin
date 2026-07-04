@@ -1,0 +1,709 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Campus Adda — Admin Panel</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Bengali:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<style>
+  :root {
+    --bg:#0D0F14; --bg2:#1A1D27; --bg3:#252837; --bg4:#30354A;
+    --text:#E8EAF0; --text2:#C8CAD8; --muted:#555B6E; --muted2:#8B8FA8;
+    --border:#1E2130; --border2:#252837;
+    --accent:#6C63FF; --accent2:#4CC9F0;
+    --danger:#F4415A; --warn:#F4A261; --ok:#3DDC97;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{font-family:'Noto Sans Bengali','Inter',sans-serif; background:var(--bg); color:var(--text); min-height:100vh;}
+  .hidden{display:none !important;}
+  ::-webkit-scrollbar{width:6px;height:6px;} ::-webkit-scrollbar-thumb{background:var(--bg4);border-radius:4px;}
+
+  /* ---------- Login ---------- */
+  #loginScreen{min-height:100vh; display:flex; align-items:center; justify-content:center; padding:20px;}
+  .login-card{width:100%; max-width:360px; background:var(--bg2); border:1px solid var(--border2); border-radius:20px; padding:28px 24px;}
+  .login-logo{width:52px;height:52px;border-radius:16px;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-size:24px;margin:0 auto 14px;}
+  .login-title{font-size:17px;font-weight:800;text-align:center;color:var(--text);}
+  .login-sub{font-size:11.5px;color:var(--muted2);text-align:center;margin-top:4px;margin-bottom:22px;}
+  .field{margin-bottom:14px;}
+  .field label{font-size:11.5px;color:var(--text2);font-weight:600;display:block;margin-bottom:6px;}
+  .field input{width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:10px;padding:11px 12px;color:var(--text);font-size:13px;font-family:inherit;outline:none;}
+  .field input:focus{border-color:var(--accent);}
+  .btn-primary{width:100%;padding:12px;border:none;border-radius:12px;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;font-size:13.5px;font-weight:700;cursor:pointer;font-family:inherit;margin-top:4px;}
+  .btn-primary:disabled{opacity:0.6;}
+  .login-err{font-size:11.5px;color:var(--danger);text-align:center;margin-top:12px;min-height:14px;}
+
+  /* ---------- App shell ---------- */
+  #adminApp{display:flex;min-height:100vh;}
+  .sidebar{width:210px;flex-shrink:0;background:var(--bg2);border-right:1px solid var(--border);padding:18px 12px;position:sticky;top:0;height:100vh;overflow-y:auto;}
+  .sb-logo{display:flex;align-items:center;gap:9px;padding:0 6px 18px;}
+  .sb-logo-icon{width:32px;height:32px;border-radius:9px;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-size:15px;}
+  .sb-logo-text{font-size:13px;font-weight:800;}
+  .sb-logo-sub{font-size:9px;color:var(--accent2);font-weight:600;}
+  .nav-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;font-size:12.5px;font-weight:600;color:var(--muted2);cursor:pointer;margin-bottom:2px;transition:.15s;}
+  .nav-item:hover{background:var(--bg3);color:var(--text);}
+  .nav-item.active{background:var(--bg3);color:var(--text);}
+  .nav-item .dot{margin-left:auto;background:var(--danger);color:#fff;font-size:9.5px;font-weight:700;border-radius:8px;padding:1px 6px;min-width:16px;text-align:center;}
+  .nav-item.active .icon{filter:none;}
+  .sb-footer{margin-top:20px;padding:10px 12px;border-top:1px solid var(--border);}
+  .sb-admin-name{font-size:11.5px;font-weight:700;color:var(--text);}
+  .sb-admin-email{font-size:10px;color:var(--muted2);margin-bottom:8px;}
+  .logout-btn{font-size:11px;color:var(--danger);cursor:pointer;font-weight:600;}
+
+  .main{flex:1;min-width:0;padding:22px 26px;max-width:1100px;}
+  .page-title{font-size:19px;font-weight:800;margin-bottom:2px;}
+  .page-sub{font-size:12px;color:var(--muted2);margin-bottom:20px;}
+
+  /* ---------- Dashboard ---------- */
+  .stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:24px;}
+  .stat-card{background:var(--bg2);border:1px solid var(--border2);border-radius:14px;padding:16px;}
+  .stat-num{font-size:22px;font-weight:800;}
+  .stat-label{font-size:11px;color:var(--muted2);margin-top:2px;}
+  .stat-card.warn .stat-num{color:var(--warn);}
+  .stat-card.danger .stat-num{color:var(--danger);}
+  .stat-card.ok .stat-num{color:var(--ok);}
+
+  /* ---------- Common controls ---------- */
+  .toolbar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;}
+  .search-input{flex:1;min-width:180px;background:var(--bg2);border:1px solid var(--border2);border-radius:10px;padding:9px 12px;color:var(--text);font-size:12.5px;font-family:inherit;outline:none;}
+  .filter-select{background:var(--bg2);border:1px solid var(--border2);border-radius:10px;padding:9px 10px;color:var(--text2);font-size:12px;font-family:inherit;outline:none;}
+
+  .card-list{display:flex;flex-direction:column;gap:10px;}
+  .item-card{background:var(--bg2);border:1px solid var(--border2);border-radius:14px;padding:14px 16px;}
+  .item-row{display:flex;align-items:center;gap:12px;}
+  .avatar-circle{width:38px;height:38px;border-radius:50%;background:var(--bg4);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;flex-shrink:0;}
+  .item-main{flex:1;min-width:0;}
+  .item-name{font-size:13px;font-weight:700;color:var(--text);}
+  .item-meta{font-size:11px;color:var(--muted2);margin-top:1px;}
+  .badge{display:inline-block;font-size:9.5px;font-weight:700;padding:2px 8px;border-radius:20px;margin-right:5px;}
+  .badge.pending{background:#F4A26122;color:var(--warn);}
+  .badge.approved{background:#3DDC9722;color:var(--ok);}
+  .badge.banned{background:#F4415A22;color:var(--danger);}
+  .badge.deactivated{background:#8B8FA822;color:var(--muted2);}
+  .badge.admin{background:#6C63FF22;color:var(--accent);}
+  .badge.teacher{background:#4CC9F022;color:var(--accent2);}
+  .item-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;}
+  .mini-btn{border:none;border-radius:8px;padding:6px 11px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;}
+  .mini-btn.ok{background:#3DDC9722;color:var(--ok);}
+  .mini-btn.warn{background:#F4A26122;color:var(--warn);}
+  .mini-btn.danger{background:#F4415A22;color:var(--danger);}
+  .mini-btn.neutral{background:var(--bg3);color:var(--text2);}
+  .mini-btn:hover{filter:brightness(1.2);}
+  .post-text-preview{font-size:12.5px;color:var(--text2);line-height:1.6;margin-top:6px;}
+  .post-img-preview{max-width:140px;border-radius:8px;margin-top:8px;display:block;}
+  .empty-state{text-align:center;padding:50px 20px;color:var(--muted2);font-size:12.5px;}
+  .empty-state .icon{font-size:34px;margin-bottom:10px;}
+  .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--bg4);color:var(--text);padding:11px 20px;border-radius:12px;font-size:12.5px;font-weight:600;z-index:999;box-shadow:0 6px 20px rgba(0,0,0,.4);}
+
+  /* ---------- Modal (edit user) ---------- */
+  .modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;z-index:500;padding:16px;}
+  .modal-box{background:var(--bg2);border:1px solid var(--border2);border-radius:18px;padding:20px;width:100%;max-width:400px;max-height:85vh;overflow-y:auto;}
+  .modal-title{font-size:15px;font-weight:800;margin-bottom:14px;}
+  .modal-box .field select{width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:10px;padding:11px 12px;color:var(--text);font-size:13px;font-family:inherit;outline:none;}
+  .modal-actions{display:flex;gap:8px;margin-top:16px;}
+  .modal-actions .btn-primary{margin-top:0;}
+  .close-x{position:absolute;top:16px;right:16px;cursor:pointer;color:var(--muted2);font-size:16px;}
+
+  @media (max-width:760px){
+    #adminApp{flex-direction:column;}
+    .sidebar{width:100%;height:auto;position:relative;display:flex;align-items:center;overflow-x:auto;padding:10px 12px;gap:4px;}
+    .sb-logo{padding:0 10px 0 0;flex-shrink:0;}
+    .nav-item{flex-shrink:0;margin-bottom:0;}
+    .sb-footer{display:none;}
+    .main{padding:16px;}
+  }
+</style>
+</head>
+<body>
+
+<!-- ============ LOGIN ============ -->
+<div id="loginScreen">
+  <div class="login-card">
+    <div class="login-logo">🛡️</div>
+    <div class="login-title">Campus Adda Admin</div>
+    <div class="login-sub">শুধুমাত্র Admin অ্যাকাউন্ট দিয়ে লগইন করা যাবে</div>
+    <div class="field">
+      <label>Email</label>
+      <input type="email" id="loginEmail" placeholder="admin@example.com" autocomplete="username">
+    </div>
+    <div class="field">
+      <label>Password</label>
+      <input type="password" id="loginPass" placeholder="••••••••" autocomplete="current-password">
+    </div>
+    <button class="btn-primary" id="loginBtn" onclick="doLogin()">লগইন করো</button>
+    <div class="login-err" id="loginErr"></div>
+  </div>
+</div>
+
+<!-- ============ ADMIN APP ============ -->
+<div id="adminApp" class="hidden">
+  <div class="sidebar">
+    <div class="sb-logo">
+      <div class="sb-logo-icon">🛡️</div>
+      <div>
+        <div class="sb-logo-text">Campus Adda</div>
+        <div class="sb-logo-sub">ADMIN PANEL</div>
+      </div>
+    </div>
+    <div class="nav-item active" data-tab="dashboard" onclick="switchTab('dashboard')">📊 <span>Dashboard</span></div>
+    <div class="nav-item" data-tab="users" onclick="switchTab('users')">👥 <span>Users</span> <span class="dot hidden" id="dotUsers">0</span></div>
+    <div class="nav-item" data-tab="posts" onclick="switchTab('posts')">📝 <span>Posts</span></div>
+    <div class="nav-item" data-tab="stories" onclick="switchTab('stories')">🟣 <span>Stories</span></div>
+    <div class="nav-item" data-tab="requests" onclick="switchTab('requests')">✏️ <span>Change Req</span> <span class="dot hidden" id="dotRequests">0</span></div>
+    <div class="nav-item" data-tab="reports" onclick="switchTab('reports')">🚩 <span>Reports</span> <span class="dot hidden" id="dotReports">0</span></div>
+    <div class="nav-item" data-tab="invites" onclick="switchTab('invites')">➕ <span>Add User</span></div>
+    <div class="sb-footer">
+      <div class="sb-admin-name" id="sbAdminName">—</div>
+      <div class="sb-admin-email" id="sbAdminEmail">—</div>
+      <div class="logout-btn" onclick="doLogout()">লগআউট</div>
+    </div>
+  </div>
+
+  <div class="main" id="mainContent">
+    <!-- injected per tab -->
+  </div>
+</div>
+
+<script>
+// ============================================================
+// CONFIG — main app-এর মতো একই Supabase project (URL + key)
+// ============================================================
+const SUPABASE_URL = 'https://jtzegemmokgagxceqluv.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_7phb2uH_5amauPA_msCbAw_tRIqDYcx';
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+let ME_ADMIN = null;
+let currentTab = 'dashboard';
+let cache = { profiles:[], posts:[], stories:[], changeRequests:[], reports:[], invites:[] };
+
+// ============================================================
+// AUTH
+// ============================================================
+async function doLogin(){
+  const email = document.getElementById('loginEmail').value.trim();
+  const pass = document.getElementById('loginPass').value;
+  const errEl = document.getElementById('loginErr');
+  const btn = document.getElementById('loginBtn');
+  errEl.textContent = '';
+  if(!email || !pass){ errEl.textContent = 'Email আর Password দাও'; return; }
+  btn.disabled = true; btn.textContent = 'চেক করা হচ্ছে...';
+
+  const { data, error } = await sb.auth.signInWithPassword({ email, password: pass });
+  if(error){ btn.disabled=false; btn.textContent='লগইন করো'; errEl.textContent = 'ভুল Email বা Password'; return; }
+
+  const { data: profile, error: pErr } = await sb.from('profiles').select('*').eq('id', data.user.id).single();
+  if(pErr || !profile || profile.role !== 'admin' || profile.status !== 'approved'){
+    await sb.auth.signOut();
+    btn.disabled=false; btn.textContent='লগইন করো';
+    errEl.textContent = 'এই অ্যাকাউন্টের Admin Access নেই';
+    return;
+  }
+  ME_ADMIN = profile;
+  document.getElementById('sbAdminName').textContent = profile.name || 'Admin';
+  document.getElementById('sbAdminEmail').textContent = profile.email || email;
+  document.getElementById('loginScreen').classList.add('hidden');
+  document.getElementById('adminApp').classList.remove('hidden');
+  btn.disabled=false; btn.textContent='লগইন করো';
+  loadAllData();
+}
+
+async function doLogout(){
+  await sb.auth.signOut();
+  ME_ADMIN = null;
+  document.getElementById('adminApp').classList.add('hidden');
+  document.getElementById('loginScreen').classList.remove('hidden');
+  document.getElementById('loginEmail').value=''; document.getElementById('loginPass').value='';
+}
+
+// Restore session on refresh
+(async () => {
+  const { data } = await sb.auth.getSession();
+  if(data?.session?.user){
+    const { data: profile } = await sb.from('profiles').select('*').eq('id', data.session.user.id).single();
+    if(profile && profile.role === 'admin' && profile.status === 'approved'){
+      ME_ADMIN = profile;
+      document.getElementById('sbAdminName').textContent = profile.name || 'Admin';
+      document.getElementById('sbAdminEmail').textContent = profile.email || '';
+      document.getElementById('loginScreen').classList.add('hidden');
+      document.getElementById('adminApp').classList.remove('hidden');
+      loadAllData();
+    }
+  }
+})();
+
+function toast(msg){
+  const t = document.createElement('div');
+  t.className = 'toast'; t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(()=>t.remove(), 2600);
+}
+
+// ============================================================
+// DATA LOADING
+// ============================================================
+async function loadAllData(){
+  const [{data:profiles}, {data:posts}, {data:stories}, {data:crs}, {data:reports}, {data:invites}] = await Promise.all([
+    sb.from('profiles').select('*').order('created_at',{ascending:false}),
+    sb.from('posts').select('*, profiles:author_id(id,name,username,dept,avatar_url)').order('created_at',{ascending:false}).limit(200),
+    sb.from('stories').select('*, profiles:author_id(id,name,username,dept)').order('created_at',{ascending:false}).limit(100),
+    sb.from('change_requests').select('*, profiles:user_id(id,name,username)').order('created_at',{ascending:false}),
+    sb.from('reports').select('*, profiles:reporter_id(id,name,username)').order('created_at',{ascending:false}),
+    sb.from('admin_invites').select('*').order('created_at',{ascending:false})
+  ]);
+  cache.profiles = profiles||[];
+  cache.posts = posts||[];
+  cache.stories = stories||[];
+  cache.changeRequests = crs||[];
+  cache.reports = reports||[];
+  cache.invites = invites||[];
+  updateDots();
+  renderTab();
+}
+
+function updateDots(){
+  const pendingUsers = cache.profiles.filter(p=>p.status==='pending').length;
+  const pendingReq = cache.changeRequests.filter(r=>r.status==='pending').length;
+  const pendingRep = cache.reports.filter(r=>r.status==='pending').length;
+  setDot('dotUsers', pendingUsers);
+  setDot('dotRequests', pendingReq);
+  setDot('dotReports', pendingRep);
+}
+function setDot(id, n){
+  const el = document.getElementById(id);
+  if(n>0){ el.textContent = n; el.classList.remove('hidden'); } else { el.classList.add('hidden'); }
+}
+
+function switchTab(tab){
+  currentTab = tab;
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.toggle('active', n.dataset.tab===tab));
+  renderTab();
+}
+
+function renderTab(){
+  const el = document.getElementById('mainContent');
+  if(currentTab==='dashboard') return renderDashboard(el);
+  if(currentTab==='users') return renderUsers(el);
+  if(currentTab==='posts') return renderPosts(el);
+  if(currentTab==='stories') return renderStories(el);
+  if(currentTab==='requests') return renderRequests(el);
+  if(currentTab==='reports') return renderReports(el);
+  if(currentTab==='invites') return renderInvites(el);
+}
+
+// ============================================================
+// DASHBOARD
+// ============================================================
+function renderDashboard(el){
+  const p = cache.profiles;
+  const pending = p.filter(x=>x.status==='pending').length;
+  const banned = p.filter(x=>x.status==='banned').length;
+  const approved = p.filter(x=>x.status==='approved').length;
+  el.innerHTML = `
+    <div class="page-title">Dashboard</div>
+    <div class="page-sub">Campus Adda-র সব কিছুর সংক্ষিপ্ত চিত্র</div>
+    <div class="stat-grid">
+      <div class="stat-card"><div class="stat-num">${p.length}</div><div class="stat-label">মোট ইউজার</div></div>
+      <div class="stat-card ${pending?'warn':''}"><div class="stat-num">${pending}</div><div class="stat-label">Approval বাকি</div></div>
+      <div class="stat-card ok"><div class="stat-num">${approved}</div><div class="stat-label">Approved</div></div>
+      <div class="stat-card ${banned?'danger':''}"><div class="stat-num">${banned}</div><div class="stat-label">Banned</div></div>
+      <div class="stat-card"><div class="stat-num">${cache.posts.length}</div><div class="stat-label">মোট পোস্ট</div></div>
+      <div class="stat-card"><div class="stat-num">${cache.stories.length}</div><div class="stat-label">মোট স্টোরি</div></div>
+      <div class="stat-card ${cache.changeRequests.filter(r=>r.status==='pending').length?'warn':''}"><div class="stat-num">${cache.changeRequests.filter(r=>r.status==='pending').length}</div><div class="stat-label">Change Request বাকি</div></div>
+      <div class="stat-card ${cache.reports.filter(r=>r.status==='pending').length?'danger':''}"><div class="stat-num">${cache.reports.filter(r=>r.status==='pending').length}</div><div class="stat-label">Report বাকি</div></div>
+    </div>
+    ${pending>0?`<div class="item-card" style="border-color:#F4A26144;"><div class="item-name">⚠️ ${pending} জন নতুন ইউজার Approval এর অপেক্ষায় আছে</div><div class="item-meta" style="margin-top:6px;">Users ট্যাবে গিয়ে Approve করো</div></div>`:''}
+  `;
+}
+
+// ============================================================
+// USERS
+// ============================================================
+let userFilter = { search:'', status:'all', role:'all' };
+function renderUsers(el){
+  el.innerHTML = `
+    <div class="page-title">Users</div>
+    <div class="page-sub">সব ইউজার — approve, ban, edit, delete</div>
+    <div class="toolbar">
+      <input class="search-input" id="userSearchInput" placeholder="নাম, username, roll খুঁজো..." oninput="userFilter.search=this.value; renderUsersList()" value="${userFilter.search}">
+      <select class="filter-select" onchange="userFilter.status=this.value; renderUsersList()">
+        <option value="all" ${userFilter.status==='all'?'selected':''}>সব Status</option>
+        <option value="pending" ${userFilter.status==='pending'?'selected':''}>Pending</option>
+        <option value="approved" ${userFilter.status==='approved'?'selected':''}>Approved</option>
+        <option value="banned" ${userFilter.status==='banned'?'selected':''}>Banned</option>
+        <option value="deactivated" ${userFilter.status==='deactivated'?'selected':''}>Deactivated</option>
+      </select>
+      <select class="filter-select" onchange="userFilter.role=this.value; renderUsersList()">
+        <option value="all" ${userFilter.role==='all'?'selected':''}>সব Role</option>
+        <option value="student" ${userFilter.role==='student'?'selected':''}>Student</option>
+        <option value="teacher" ${userFilter.role==='teacher'?'selected':''}>Teacher</option>
+        <option value="cr" ${userFilter.role==='cr'?'selected':''}>CR</option>
+        <option value="admin" ${userFilter.role==='admin'?'selected':''}>Admin</option>
+      </select>
+    </div>
+    <div class="card-list" id="usersList"></div>
+  `;
+  renderUsersList();
+}
+// Only re-renders the list portion (#usersList) — NOT the toolbar/search input above it,
+// so typing in the search box no longer destroys and recreates the input (which was
+// causing it to lose focus after every single character).
+function renderUsersList(){
+  let list = cache.profiles.filter(u=>{
+    if(userFilter.status!=='all' && (u.status||'approved')!==userFilter.status) return false;
+    if(userFilter.role!=='all' && (u.role||'student')!==userFilter.role) return false;
+    if(userFilter.search){
+      const s = userFilter.search.toLowerCase();
+      if(!(u.name||'').toLowerCase().includes(s) && !(u.username||'').toLowerCase().includes(s) && !(u.roll||'').toLowerCase().includes(s) && !(u.email||'').toLowerCase().includes(s)) return false;
+    }
+    return true;
+  });
+  const wrap = document.getElementById('usersList');
+  if(!wrap) return;
+  if(!list.length){ wrap.innerHTML = `<div class="empty-state"><div class="icon">👤</div>কোনো ইউজার পাওয়া যায়নি</div>`; return; }
+  wrap.innerHTML = list.map(u => userCardHtml(u)).join('');
+}
+
+function userCardHtml(u){
+  const status = u.status||'approved';
+  const initial = (u.name||'?')[0];
+  return `
+    <div class="item-card">
+      <div class="item-row">
+        <div class="avatar-circle">${initial}</div>
+        <div class="item-main">
+          <div class="item-name">${esc(u.name||'নাম নেই')} <span style="color:var(--muted2);font-weight:500;">@${esc(u.username||'')}</span></div>
+          <div class="item-meta">${esc(u.dept||'-')} · ${esc(u.year||'-')} বর্ষ · Roll ${esc(u.roll||'-')} · ${esc(u.email||'')}</div>
+        </div>
+      </div>
+      <div style="margin-top:8px;">
+        <span class="badge ${status}">${statusLabel(status)}</span>
+        <span class="badge ${u.role==='admin'?'admin':u.role==='teacher'?'teacher':''}">${roleLabel(u.role)}</span>
+      </div>
+      <div class="item-actions">
+        ${status==='pending'?`<button class="mini-btn ok" onclick="setUserStatus('${u.id}','approved')">✅ Approve</button>`:''}
+        ${status!=='banned'?`<button class="mini-btn danger" onclick="setUserStatus('${u.id}','banned')">🚫 Ban</button>`:`<button class="mini-btn ok" onclick="setUserStatus('${u.id}','approved')">♻️ Unban</button>`}
+        <button class="mini-btn neutral" onclick="openEditUser('${u.id}')">✏️ Edit</button>
+        <button class="mini-btn danger" onclick="confirmDeleteUser('${u.id}')">🗑️ Delete</button>
+      </div>
+    </div>`;
+}
+function statusLabel(s){ return ({pending:'⏳ Pending',approved:'✅ Approved',banned:'🚫 Banned',deactivated:'😴 Deactivated'})[s]||s; }
+function roleLabel(r){ return ({student:'Student',teacher:'Teacher',cr:'CR',admin:'Admin'})[r]||r||'Student'; }
+function esc(s){ return String(s??'').replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+async function setUserStatus(id, status){
+  const { error } = await sb.from('profiles').update({ status }).eq('id', id);
+  if(error){ toast('❌ '+error.message); return; }
+  toast(status==='approved'?'✅ Approve করা হয়েছে':status==='banned'?'🚫 Ban করা হয়েছে':'✅ আপডেট হয়েছে');
+  const u = cache.profiles.find(x=>x.id===id); if(u) u.status=status;
+  updateDots(); renderUsersList();
+}
+
+function confirmDeleteUser(id){
+  const u = cache.profiles.find(x=>x.id===id);
+  if(!u) return;
+  if(!confirm(`"${u.name}" কে Delete করবে? এতে তার প্রোফাইল ডাটা মুছে যাবে এবং অ্যাকাউন্ট চিরতরে Ban হয়ে যাবে (login করতে পারবে না)। এই কাজ Undo করা যাবে না। নিশ্চিত?`)) return;
+  deleteUser(id);
+}
+async function deleteUser(id){
+  // NOTE: anon/publishable key দিয়ে auth.users (login credential) সরাসরি delete
+  // করা যায় না — এটার জন্য Supabase Service Role key লাগে যেটা client-side
+  // এ রাখা নিরাপদ না। তাই এখানে "soft delete" করা হচ্ছে: profile scrub +
+  // status='banned' যাতে সে আর কখনো login করতে না পারে বা visible না থাকে।
+  const { error } = await sb.from('profiles').update({
+    status:'banned', name:'Deleted User', bio:'', avatar_url:null,
+    dept:null, year:null, roll:null, blood_group:null, designation:null
+  }).eq('id', id);
+  if(error){ toast('❌ '+error.message); return; }
+  toast('🗑️ ইউজার Delete করা হয়েছে');
+  await loadAllData();
+}
+
+let editingUserId = null;
+function openEditUser(id){
+  const u = cache.profiles.find(x=>x.id===id); if(!u) return;
+  editingUserId = id;
+  const modal = document.createElement('div');
+  modal.className = 'modal-backdrop';
+  modal.id = 'editUserModal';
+  modal.onclick = (e)=>{ if(e.target===modal) modal.remove(); };
+  modal.innerHTML = `
+    <div class="modal-box" style="position:relative;">
+      <div class="close-x" onclick="document.getElementById('editUserModal').remove()">✕</div>
+      <div class="modal-title">✏️ ইউজার Edit করো</div>
+      <div class="field"><label>নাম</label><input id="edName" value="${esc(u.name||'')}"></div>
+      <div class="field"><label>বিভাগ (Dept)</label><input id="edDept" value="${esc(u.dept||'')}"></div>
+      <div class="field"><label>বর্ষ (Year)</label><input id="edYear" value="${esc(u.year||'')}"></div>
+      <div class="field"><label>Roll</label><input id="edRoll" value="${esc(u.roll||'')}"></div>
+      <div class="field"><label>Blood Group</label><input id="edBlood" value="${esc(u.blood_group||'')}"></div>
+      <div class="field"><label>Designation</label><input id="edDesig" value="${esc(u.designation||'')}"></div>
+      <div class="field">
+        <label>Role</label>
+        <select id="edRole">
+          <option value="student" ${u.role==='student'?'selected':''}>Student</option>
+          <option value="cr" ${u.role==='cr'?'selected':''}>CR</option>
+          <option value="teacher" ${u.role==='teacher'?'selected':''}>Teacher</option>
+          <option value="admin" ${u.role==='admin'?'selected':''}>Admin</option>
+        </select>
+      </div>
+      <div class="modal-actions">
+        <button class="mini-btn neutral" style="flex:1;padding:10px;" onclick="document.getElementById('editUserModal').remove()">বাতিল</button>
+        <button class="btn-primary" style="flex:1;" onclick="saveEditUser()">Save করো</button>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+}
+async function saveEditUser(){
+  const updates = {
+    name: document.getElementById('edName').value.trim(),
+    dept: document.getElementById('edDept').value.trim(),
+    year: document.getElementById('edYear').value.trim(),
+    roll: document.getElementById('edRoll').value.trim(),
+    blood_group: document.getElementById('edBlood').value.trim(),
+    designation: document.getElementById('edDesig').value.trim(),
+    role: document.getElementById('edRole').value
+  };
+  const { error } = await sb.from('profiles').update(updates).eq('id', editingUserId);
+  if(error){ toast('❌ '+error.message); return; }
+  toast('✅ ইউজার আপডেট হয়েছে');
+  document.getElementById('editUserModal')?.remove();
+  await loadAllData();
+}
+
+// ============================================================
+// POSTS
+// ============================================================
+function renderPosts(el){
+  el.innerHTML = `
+    <div class="page-title">Posts</div>
+    <div class="page-sub">সব পোস্ট মডারেশন (সর্বশেষ ২০০টা)</div>
+    <div class="card-list" id="postsList"></div>
+  `;
+  const wrap = document.getElementById('postsList');
+  if(!cache.posts.length){ wrap.innerHTML = `<div class="empty-state"><div class="icon">📝</div>কোনো পোস্ট নেই</div>`; return; }
+  wrap.innerHTML = cache.posts.map(p => `
+    <div class="item-card">
+      <div class="item-row">
+        <div class="avatar-circle">${(p.profiles?.name||'?')[0]}</div>
+        <div class="item-main">
+          <div class="item-name">${esc(p.profiles?.name||'Unknown')}</div>
+          <div class="item-meta">${esc(p.dept||'')} · ${p.created_at?new Date(p.created_at).toLocaleString('bn-BD'):''}</div>
+        </div>
+      </div>
+      <div class="post-text-preview">${esc(p.text||'')}</div>
+      ${p.image_url?`<img src="${p.image_url}" class="post-img-preview">`:''}
+      <div class="item-actions">
+        <button class="mini-btn danger" onclick="deletePost(${p.id})">🗑️ Delete Post</button>
+      </div>
+    </div>`).join('');
+}
+async function deletePost(id){
+  if(!confirm('এই পোস্ট Delete করবে?')) return;
+  await doDeletePost(id);
+}
+async function doDeletePost(id){
+  const { error } = await sb.from('posts').delete().eq('id', id);
+  if(error){ toast('❌ '+error.message); return false; }
+  toast('🗑️ পোস্ট Delete হয়েছে');
+  cache.posts = cache.posts.filter(p=>p.id!==id);
+  if(currentTab==='posts') renderPosts(document.getElementById('mainContent'));
+  return true;
+}
+
+// ============================================================
+// STORIES
+// ============================================================
+function renderStories(el){
+  el.innerHTML = `
+    <div class="page-title">Stories</div>
+    <div class="page-sub">সব স্টোরি মডারেশন</div>
+    <div class="card-list" id="storiesList"></div>
+  `;
+  const wrap = document.getElementById('storiesList');
+  if(!cache.stories.length){ wrap.innerHTML = `<div class="empty-state"><div class="icon">🟣</div>কোনো স্টোরি নেই</div>`; return; }
+  wrap.innerHTML = cache.stories.map(s => `
+    <div class="item-card">
+      <div class="item-row">
+        <div class="avatar-circle">${(s.profiles?.name||'?')[0]}</div>
+        <div class="item-main">
+          <div class="item-name">${esc(s.profiles?.name||'Unknown')}</div>
+          <div class="item-meta">${s.created_at?new Date(s.created_at).toLocaleString('bn-BD'):''}</div>
+        </div>
+      </div>
+      ${s.caption?`<div class="post-text-preview">${esc(s.caption)}</div>`:''}
+      ${s.image_url?`<img src="${s.image_url}" class="post-img-preview">`:''}
+      <div class="item-actions">
+        <button class="mini-btn danger" onclick="deleteStory(${s.id})">🗑️ Delete Story</button>
+      </div>
+    </div>`).join('');
+}
+async function deleteStory(id){
+  if(!confirm('এই স্টোরি Delete করবে?')) return;
+  await doDeleteStory(id);
+}
+async function doDeleteStory(id){
+  const { error } = await sb.from('stories').delete().eq('id', id);
+  if(error){ toast('❌ '+error.message); return false; }
+  toast('🗑️ স্টোরি Delete হয়েছে');
+  cache.stories = cache.stories.filter(s=>s.id!==id);
+  if(currentTab==='stories') renderStories(document.getElementById('mainContent'));
+  return true;
+}
+
+// ============================================================
+// CHANGE REQUESTS
+// ============================================================
+const CR_FIELD_LABEL = { name:'নাম', dept:'বিভাগ', year:'বর্ষ' };
+function renderRequests(el){
+  el.innerHTML = `
+    <div class="page-title">Change Requests</div>
+    <div class="page-sub">নাম / বিভাগ / বর্ষ পরিবর্তনের আবেদন</div>
+    <div class="card-list" id="reqList"></div>
+  `;
+  const wrap = document.getElementById('reqList');
+  const list = [...cache.changeRequests].sort((a,b)=> (a.status==='pending'?0:1) - (b.status==='pending'?0:1));
+  if(!list.length){ wrap.innerHTML = `<div class="empty-state"><div class="icon">✏️</div>কোনো Change Request নেই</div>`; return; }
+  wrap.innerHTML = list.map(r => `
+    <div class="item-card">
+      <div class="item-name">${esc(r.profiles?.name||'Unknown')} <span class="badge ${r.status==='pending'?'pending':r.status==='approved'?'approved':'banned'}">${r.status}</span></div>
+      <div class="item-meta" style="margin-top:6px;">${CR_FIELD_LABEL[r.field]||r.field}: <b style="color:var(--text2);">${esc(r.old_value||'-')}</b> → <b style="color:var(--accent2);">${esc(r.new_value||'-')}</b></div>
+      ${r.reason?`<div class="post-text-preview">কারণ: ${esc(r.reason)}</div>`:''}
+      ${r.status==='pending'?`
+      <div class="item-actions">
+        <button class="mini-btn ok" onclick="resolveRequest(${r.id},'approved')">✅ Approve</button>
+        <button class="mini-btn danger" onclick="resolveRequest(${r.id},'rejected')">❌ Reject</button>
+      </div>`:''}
+    </div>`).join('');
+}
+// 🔒 Only these fields are ever allowed to flow from a change_request into
+// profiles. This is a second line of defense on top of the DB CHECK
+// constraint (change_requests_field_allowlist) — a request row can never be
+// used to overwrite role/status/id/anything else, no matter how it got in.
+const CHANGE_REQUEST_ALLOWED_FIELDS = ['name', 'dept', 'year'];
+async function resolveRequest(id, status){
+  const req = cache.changeRequests.find(r=>r.id===id); if(!req) return;
+  if(status==='approved'){
+    if(!CHANGE_REQUEST_ALLOWED_FIELDS.includes(req.field)){
+      toast('❌ Invalid field — এই request ignore করা হলো (সন্দেহজনক)');
+      return;
+    }
+    const upd = {}; upd[req.field] = req.new_value;
+    const { error: e1 } = await sb.from('profiles').update(upd).eq('id', req.user_id);
+    if(e1){ toast('❌ '+e1.message); return; }
+  }
+  const { error } = await sb.from('change_requests').update({ status, resolved_at:new Date().toISOString(), resolved_by:ME_ADMIN.id }).eq('id', id);
+  if(error){ toast('❌ '+error.message); return; }
+  toast(status==='approved'?'✅ Approve করা হয়েছে':'❌ Reject করা হয়েছে');
+  await loadAllData();
+}
+
+// ============================================================
+// REPORTS
+// ============================================================
+const REPORT_TYPE_LABEL = { post:'📝 Post', comment:'💬 Comment', user:'👤 User', story:'🟣 Story' };
+function renderReports(el){
+  el.innerHTML = `
+    <div class="page-title">Reports</div>
+    <div class="page-sub">রিপোর্ট করা কন্টেন্ট রিভিউ</div>
+    <div class="card-list" id="repList"></div>
+  `;
+  const wrap = document.getElementById('repList');
+  const list = [...cache.reports].sort((a,b)=> (a.status==='pending'?0:1) - (b.status==='pending'?0:1));
+  if(!list.length){ wrap.innerHTML = `<div class="empty-state"><div class="icon">🚩</div>কোনো Report নেই</div>`; return; }
+  wrap.innerHTML = list.map(r => `
+    <div class="item-card">
+      <div class="item-name">${REPORT_TYPE_LABEL[r.type]||r.type}: ${esc(r.target_name||'-')} <span class="badge ${r.status==='pending'?'pending':'approved'}">${r.status}</span></div>
+      <div class="item-meta" style="margin-top:4px;">রিপোর্টার: ${esc(r.profiles?.name||'Unknown')} · কারণ: ${esc(r.reason||'')}</div>
+      ${r.details?`<div class="post-text-preview">${esc(r.details)}</div>`:''}
+      ${r.status==='pending'?`
+      <div class="item-actions">
+        ${r.type==='post'?`<button class="mini-btn danger" onclick="deletePostAndResolveReport('${r.target_id}', ${r.id})">🗑️ Post Delete + Resolve</button>`:''}
+        ${r.type==='story'?`<button class="mini-btn danger" onclick="deleteStoryAndResolveReport('${r.target_id}', ${r.id})">🗑️ Story Delete + Resolve</button>`:''}
+        <button class="mini-btn ok" onclick="resolveReport(${r.id})">✅ Resolve</button>
+        <button class="mini-btn neutral" onclick="dismissReport(${r.id})">🙈 Dismiss</button>
+      </div>`:''}
+    </div>`).join('');
+}
+async function resolveReport(id){
+  const { error } = await sb.from('reports').update({ status:'resolved', resolved_at:new Date().toISOString(), resolved_by:ME_ADMIN.id }).eq('id', id);
+  if(error){ toast('❌ '+error.message); return; }
+  toast('✅ Report সমাধান হয়েছে');
+  await loadAllData();
+}
+// Deletes the reported post/story first — resolveReport only runs if that delete
+// actually succeeded, so a failed delete no longer silently marks the report resolved.
+async function deletePostAndResolveReport(postId, reportId){
+  if(!confirm('এই পোস্ট Delete করবে এবং Report Resolve করবে?')) return;
+  const ok = await doDeletePost(postId);
+  if(ok) await resolveReport(reportId);
+}
+async function deleteStoryAndResolveReport(storyId, reportId){
+  if(!confirm('এই স্টোরি Delete করবে এবং Report Resolve করবে?')) return;
+  const ok = await doDeleteStory(storyId);
+  if(ok) await resolveReport(reportId);
+}
+async function dismissReport(id){
+  const { error } = await sb.from('reports').update({ status:'dismissed', resolved_at:new Date().toISOString(), resolved_by:ME_ADMIN.id }).eq('id', id);
+  if(error){ toast('❌ '+error.message); return; }
+  toast('🙈 Report Dismiss করা হয়েছে');
+  await loadAllData();
+}
+
+// ============================================================
+// INVITES ("Add User")
+// ============================================================
+function renderInvites(el){
+  el.innerHTML = `
+    <div class="page-title">Add User</div>
+    <div class="page-sub">নতুন ইউজার pre-register করো — যখন সে ওই email দিয়ে সাইন আপ করবে, তখন তার আবেদন এখানে দেখা যাবে ও Approve করতে পারবে সহজে। (Security কারণে সরাসরি password তৈরি করা যায় না — signup নিজে করতে হয়)</div>
+    <div class="item-card">
+      <div class="field"><label>Email *</label><input id="invEmail" placeholder="student@gmail.com"></div>
+      <div class="field"><label>নাম</label><input id="invName" placeholder="পূর্ণ নাম"></div>
+      <div class="field"><label>বিভাগ</label><input id="invDept" placeholder="Physics"></div>
+      <div class="field"><label>বর্ষ</label><input id="invYear" placeholder="1st / 2nd..."></div>
+      <div class="field">
+        <label>Role</label>
+        <select id="invRole">
+          <option value="student">Student</option>
+          <option value="cr">CR</option>
+          <option value="teacher">Teacher</option>
+          <option value="admin">Admin</option>
+        </select>
+      </div>
+      <button class="btn-primary" onclick="addInvite()">➕ Add করো</button>
+    </div>
+    <div style="margin-top:20px;font-size:12.5px;font-weight:700;color:var(--text2);">Pre-registered তালিকা</div>
+    <div class="card-list" id="inviteList" style="margin-top:8px;"></div>
+  `;
+  const wrap = document.getElementById('inviteList');
+  if(!cache.invites.length){ wrap.innerHTML = `<div class="empty-state"><div class="icon">➕</div>কোনো Invite নেই</div>`; return; }
+  wrap.innerHTML = cache.invites.map(i => `
+    <div class="item-card">
+      <div class="item-name">${esc(i.name||i.email)} <span class="badge ${i.used?'approved':'pending'}">${i.used?'Signed up':'Waiting'}</span></div>
+      <div class="item-meta">${esc(i.email)} · ${esc(i.dept||'-')} · ${roleLabel(i.role)}${i.used_at?` · ${new Date(i.used_at).toLocaleDateString('bn-BD')} তারিখে signed up`:''}</div>
+      <div class="item-actions"><button class="mini-btn danger" onclick="deleteInvite(${i.id})">🗑️ Remove</button></div>
+    </div>`).join('');
+}
+async function addInvite(){
+  const email = document.getElementById('invEmail').value.trim();
+  if(!email){ toast('❌ Email দাও'); return; }
+  const payload = {
+    email, name: document.getElementById('invName').value.trim(),
+    dept: document.getElementById('invDept').value.trim(),
+    year: document.getElementById('invYear').value.trim(),
+    role: document.getElementById('invRole').value,
+    invited_by: ME_ADMIN.id
+  };
+  const { error } = await sb.from('admin_invites').insert(payload);
+  if(error){ toast('❌ '+error.message); return; }
+  toast('✅ Add করা হয়েছে');
+  await loadAllData();
+}
+async function deleteInvite(id){
+  const { error } = await sb.from('admin_invites').delete().eq('id', id);
+  if(error){ toast('❌ '+error.message); return; }
+  await loadAllData();
+}
+</script>
+</body>
+</html>
