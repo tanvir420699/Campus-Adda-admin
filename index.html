@@ -1,0 +1,1239 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Campus Adda — Admin Panel</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Bengali:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<style>
+  :root {
+    --bg:#0D0F14; --bg2:#1A1D27; --bg3:#252837; --bg4:#30354A;
+    --text:#E8EAF0; --text2:#C8CAD8; --muted:#555B6E; --muted2:#8B8FA8;
+    --border:#1E2130; --border2:#252837;
+    --accent:#6C63FF; --accent2:#4CC9F0;
+    --danger:#F4415A; --warn:#F4A261; --ok:#3DDC97;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{font-family:'Noto Sans Bengali','Inter',sans-serif; background:var(--bg); color:var(--text); min-height:100vh;}
+  .hidden{display:none !important;}
+  ::-webkit-scrollbar{width:6px;height:6px;} ::-webkit-scrollbar-thumb{background:var(--bg4);border-radius:4px;}
+
+  /* ---------- Login ---------- */
+  #loginScreen{min-height:100vh; display:flex; align-items:center; justify-content:center; padding:20px;}
+  .login-card{width:100%; max-width:360px; background:var(--bg2); border:1px solid var(--border2); border-radius:20px; padding:28px 24px;}
+  .login-logo{width:52px;height:52px;border-radius:16px;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-size:24px;margin:0 auto 14px;}
+  .login-title{font-size:17px;font-weight:800;text-align:center;color:var(--text);}
+  .login-sub{font-size:11.5px;color:var(--muted2);text-align:center;margin-top:4px;margin-bottom:22px;}
+  .field{margin-bottom:14px;}
+  .field label{font-size:11.5px;color:var(--text2);font-weight:600;display:block;margin-bottom:6px;}
+  .field input{width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:10px;padding:11px 12px;color:var(--text);font-size:13px;font-family:inherit;outline:none;}
+  .field input:focus{border-color:var(--accent);}
+  .btn-primary{width:100%;padding:12px;border:none;border-radius:12px;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;font-size:13.5px;font-weight:700;cursor:pointer;font-family:inherit;margin-top:4px;}
+  .btn-primary:disabled{opacity:0.6;}
+  .login-err{font-size:11.5px;color:var(--danger);text-align:center;margin-top:12px;min-height:14px;}
+
+  /* ---------- App shell ---------- */
+  #adminApp{display:flex;min-height:100vh;}
+  .sidebar{width:210px;flex-shrink:0;background:var(--bg2);border-right:1px solid var(--border);padding:18px 12px;position:sticky;top:0;height:100vh;overflow-y:auto;}
+  .sb-logo{display:flex;align-items:center;gap:9px;padding:0 6px 18px;}
+  .sb-logo-icon{width:32px;height:32px;border-radius:9px;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-size:15px;}
+  .sb-logo-text{font-size:13px;font-weight:800;}
+  .sb-logo-sub{font-size:9px;color:var(--accent2);font-weight:600;}
+  .nav-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;font-size:12.5px;font-weight:600;color:var(--muted2);cursor:pointer;margin-bottom:2px;transition:.15s;}
+  .nav-item:hover{background:var(--bg3);color:var(--text);}
+  .nav-item.active{background:var(--bg3);color:var(--text);}
+  .nav-item .dot{margin-left:auto;background:var(--danger);color:#fff;font-size:9.5px;font-weight:700;border-radius:8px;padding:1px 6px;min-width:16px;text-align:center;}
+  .nav-item.active .icon{filter:none;}
+  .sb-footer{margin-top:20px;padding:10px 12px;border-top:1px solid var(--border);}
+  .sb-admin-name{font-size:11.5px;font-weight:700;color:var(--text);}
+  .sb-admin-email{font-size:10px;color:var(--muted2);margin-bottom:8px;}
+  .logout-btn{font-size:11px;color:var(--danger);cursor:pointer;font-weight:600;}
+
+  .main{flex:1;min-width:0;padding:22px 26px;max-width:1100px;}
+  .page-title{font-size:19px;font-weight:800;margin-bottom:2px;}
+  .page-sub{font-size:12px;color:var(--muted2);margin-bottom:20px;}
+
+  /* ---------- Dashboard ---------- */
+  .stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:24px;}
+  .stat-card{background:var(--bg2);border:1px solid var(--border2);border-radius:14px;padding:16px;}
+  .stat-num{font-size:22px;font-weight:800;}
+  .stat-label{font-size:11px;color:var(--muted2);margin-top:2px;}
+  .stat-card.warn .stat-num{color:var(--warn);}
+  .stat-card.danger .stat-num{color:var(--danger);}
+  .stat-card.ok .stat-num{color:var(--ok);}
+
+  /* ---------- Common controls ---------- */
+  .toolbar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;}
+  .search-input{flex:1;min-width:180px;background:var(--bg2);border:1px solid var(--border2);border-radius:10px;padding:9px 12px;color:var(--text);font-size:12.5px;font-family:inherit;outline:none;}
+  .filter-select{background:var(--bg2);border:1px solid var(--border2);border-radius:10px;padding:9px 10px;color:var(--text2);font-size:12px;font-family:inherit;outline:none;}
+
+  .card-list{display:flex;flex-direction:column;gap:10px;}
+  .item-card{background:var(--bg2);border:1px solid var(--border2);border-radius:14px;padding:14px 16px;}
+  .item-row{display:flex;align-items:center;gap:12px;}
+  .avatar-circle{width:38px;height:38px;border-radius:50%;background:var(--bg4);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;flex-shrink:0;}
+  .item-main{flex:1;min-width:0;}
+  .item-name{font-size:13px;font-weight:700;color:var(--text);}
+  .item-meta{font-size:11px;color:var(--muted2);margin-top:1px;}
+  .badge{display:inline-block;font-size:9.5px;font-weight:700;padding:2px 8px;border-radius:20px;margin-right:5px;}
+  .badge.pending{background:#F4A26122;color:var(--warn);}
+  .badge.approved{background:#3DDC9722;color:var(--ok);}
+  .badge.banned{background:#F4415A22;color:var(--danger);}
+  .badge.deactivated{background:#8B8FA822;color:var(--muted2);}
+  .badge.admin{background:#6C63FF22;color:var(--accent);}
+  .badge.teacher{background:#4CC9F022;color:var(--accent2);}
+  .item-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;}
+  .mini-btn{border:none;border-radius:8px;padding:6px 11px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;}
+  .mini-btn.ok{background:#3DDC9722;color:var(--ok);}
+  .mini-btn.warn{background:#F4A26122;color:var(--warn);}
+  .mini-btn.danger{background:#F4415A22;color:var(--danger);}
+  .mini-btn.neutral{background:var(--bg3);color:var(--text2);}
+  .mini-btn:hover{filter:brightness(1.2);}
+  .post-text-preview{font-size:12.5px;color:var(--text2);line-height:1.6;margin-top:6px;}
+  .post-img-preview{max-width:140px;border-radius:8px;margin-top:8px;display:block;}
+  .empty-state{text-align:center;padding:50px 20px;color:var(--muted2);font-size:12.5px;}
+  .empty-state .icon{font-size:34px;margin-bottom:10px;}
+  .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--bg4);color:var(--text);padding:11px 20px;border-radius:12px;font-size:12.5px;font-weight:600;z-index:999;box-shadow:0 6px 20px rgba(0,0,0,.4);}
+
+  /* ---------- Modal (edit user) ---------- */
+  .modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;z-index:500;padding:16px;}
+  .modal-box{background:var(--bg2);border:1px solid var(--border2);border-radius:18px;padding:20px;width:100%;max-width:400px;max-height:85vh;overflow-y:auto;}
+  .modal-title{font-size:15px;font-weight:800;margin-bottom:14px;}
+  .modal-box .field select{width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:10px;padding:11px 12px;color:var(--text);font-size:13px;font-family:inherit;outline:none;}
+  .modal-actions{display:flex;gap:8px;margin-top:16px;}
+  .modal-actions .btn-primary{margin-top:0;}
+  .close-x{position:absolute;top:16px;right:16px;cursor:pointer;color:var(--muted2);font-size:16px;}
+
+  @media (max-width:760px){
+    #adminApp{flex-direction:column;}
+    .sidebar{width:100%;height:auto;position:relative;display:flex;align-items:center;overflow-x:auto;padding:10px 12px;gap:4px;}
+    .sb-logo{padding:0 10px 0 0;flex-shrink:0;}
+    .nav-item{flex-shrink:0;margin-bottom:0;}
+    .sb-footer{display:none;}
+    .main{padding:16px;}
+  }
+</style>
+</head>
+<body>
+
+<!-- ============ LOGIN ============ -->
+<div id="loginScreen">
+  <div class="login-card">
+    <div class="login-logo">🛡️</div>
+    <div class="login-title">Campus Adda Admin</div>
+    <div class="login-sub">শুধুমাত্র Admin অ্যাকাউন্ট দিয়ে লগইন করা যাবে</div>
+    <div class="field">
+      <label>Email</label>
+      <input type="email" id="loginEmail" placeholder="admin@example.com" autocomplete="username">
+    </div>
+    <div class="field">
+      <label>Password</label>
+      <input type="password" id="loginPass" placeholder="••••••••" autocomplete="current-password">
+    </div>
+    <button class="btn-primary" id="loginBtn" onclick="doLogin()">লগইন করো</button>
+    <div class="login-err" id="loginErr"></div>
+  </div>
+</div>
+
+<!-- ============ ADMIN APP ============ -->
+<div id="adminApp" class="hidden">
+  <div class="sidebar">
+    <div class="sb-logo">
+      <div class="sb-logo-icon">🛡️</div>
+      <div>
+        <div class="sb-logo-text">Campus Adda</div>
+        <div class="sb-logo-sub">ADMIN PANEL</div>
+      </div>
+    </div>
+    <div class="nav-item active" data-tab="dashboard" onclick="switchTab('dashboard')">📊 <span>Dashboard</span></div>
+    <div class="nav-item" data-tab="users" onclick="switchTab('users')">👥 <span>Users</span> <span class="dot hidden" id="dotUsers">0</span></div>
+    <div class="nav-item" data-tab="study" onclick="switchTab('study')">📚 <span>Study Control</span></div>
+    <div class="nav-item" data-tab="posts" onclick="switchTab('posts')">📝 <span>Posts</span></div>
+    <div class="nav-item" data-tab="stories" onclick="switchTab('stories')">🟣 <span>Stories</span></div>
+    <div class="nav-item" data-tab="requests" onclick="switchTab('requests')">✏️ <span>Change Req</span> <span class="dot hidden" id="dotRequests">0</span></div>
+    <div class="nav-item" data-tab="reports" onclick="switchTab('reports')">🚩 <span>Reports</span> <span class="dot hidden" id="dotReports">0</span></div>
+    <div class="nav-item" data-tab="invites" onclick="switchTab('invites')">➕ <span>Add User</span></div>
+    <div class="sb-footer">
+      <div class="sb-admin-name" id="sbAdminName">—</div>
+      <div class="sb-admin-email" id="sbAdminEmail">—</div>
+      <div class="logout-btn" onclick="doLogout()">লগআউট</div>
+    </div>
+  </div>
+
+  <div class="main" id="mainContent">
+    <!-- injected per tab -->
+  </div>
+</div>
+
+<script>
+// ============================================================
+// CONFIG — main app-এর মতো একই Supabase project (URL + key)
+// ============================================================
+const SUPABASE_URL = 'https://jtzegemmokgagxceqluv.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_7phb2uH_5amauPA_msCbAw_tRIqDYcx';
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+let ME_ADMIN = null;
+let currentTab = 'dashboard';
+let cache = { profiles:[], posts:[], stories:[], changeRequests:[], reports:[], invites:[],
+  studySections:{}, notices:[], events:[], lostFound:[], bloodRequests:[], studyNotes:[], studyRoutine:[], studyExams:[], studyVideos:[], quizQuestions:[] };
+
+// ============================================================
+// AUTH
+// ============================================================
+async function doLogin(){
+  const email = document.getElementById('loginEmail').value.trim();
+  const pass = document.getElementById('loginPass').value;
+  const errEl = document.getElementById('loginErr');
+  const btn = document.getElementById('loginBtn');
+  errEl.textContent = '';
+  if(!email || !pass){ errEl.textContent = 'Email আর Password দাও'; return; }
+  btn.disabled = true; btn.textContent = 'চেক করা হচ্ছে...';
+
+  const { data, error } = await sb.auth.signInWithPassword({ email, password: pass });
+  if(error){ btn.disabled=false; btn.textContent='লগইন করো'; errEl.textContent = 'ভুল Email বা Password'; return; }
+
+  const { data: profile, error: pErr } = await sb.from('profiles').select('*').eq('id', data.user.id).single();
+  if(pErr || !profile || profile.role !== 'admin' || profile.status !== 'approved'){
+    await sb.auth.signOut();
+    btn.disabled=false; btn.textContent='লগইন করো';
+    errEl.textContent = 'এই অ্যাকাউন্টের Admin Access নেই';
+    return;
+  }
+  ME_ADMIN = profile;
+  document.getElementById('sbAdminName').textContent = profile.name || 'Admin';
+  document.getElementById('sbAdminEmail').textContent = profile.email || email;
+  document.getElementById('loginScreen').classList.add('hidden');
+  document.getElementById('adminApp').classList.remove('hidden');
+  btn.disabled=false; btn.textContent='লগইন করো';
+  loadAllData();
+}
+
+async function doLogout(){
+  await sb.auth.signOut();
+  ME_ADMIN = null;
+  document.getElementById('adminApp').classList.add('hidden');
+  document.getElementById('loginScreen').classList.remove('hidden');
+  document.getElementById('loginEmail').value=''; document.getElementById('loginPass').value='';
+}
+
+// Restore session on refresh
+(async () => {
+  const { data } = await sb.auth.getSession();
+  if(data?.session?.user){
+    const { data: profile } = await sb.from('profiles').select('*').eq('id', data.session.user.id).single();
+    if(profile && profile.role === 'admin' && profile.status === 'approved'){
+      ME_ADMIN = profile;
+      document.getElementById('sbAdminName').textContent = profile.name || 'Admin';
+      document.getElementById('sbAdminEmail').textContent = profile.email || '';
+      document.getElementById('loginScreen').classList.add('hidden');
+      document.getElementById('adminApp').classList.remove('hidden');
+      loadAllData();
+    }
+  }
+})();
+
+function toast(msg){
+  const t = document.createElement('div');
+  t.className = 'toast'; t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(()=>t.remove(), 2600);
+}
+
+// ============================================================
+// DATA LOADING
+// ============================================================
+async function loadAllData(){
+  const [{data:profiles}, {data:posts}, {data:stories}, {data:crs}, {data:reports}, {data:invites}] = await Promise.all([
+    sb.from('profiles').select('*').order('created_at',{ascending:false}),
+    sb.from('posts').select('*, profiles:author_id(id,name,username,dept,avatar_url)').order('created_at',{ascending:false}).limit(200),
+    sb.from('stories').select('*, profiles:author_id(id,name,username,dept)').order('created_at',{ascending:false}).limit(100),
+    sb.from('change_requests').select('*, profiles:user_id(id,name,username)').order('created_at',{ascending:false}),
+    sb.from('reports').select('*, profiles:reporter_id(id,name,username)').order('created_at',{ascending:false}),
+    sb.from('admin_invites').select('*').order('created_at',{ascending:false})
+  ]);
+  cache.profiles = profiles||[];
+  cache.posts = posts||[];
+  cache.stories = stories||[];
+  cache.changeRequests = crs||[];
+  cache.reports = reports||[];
+  cache.invites = invites||[];
+  updateDots();
+  renderTab();
+  loadStudyControlData(); // fetched separately/lazily so the main tabs render fast
+}
+
+// ============================================================
+// STUDY CONTROL — data loading (lazy, doesn't block main dashboard)
+// ============================================================
+async function loadStudyControlData(){
+  const [{data:cfg}, {data:notices}, {data:events}, {data:lf}, {data:br}, {data:sn}, {data:sr}, {data:se}, {data:sv}, {data:qq}] = await Promise.all([
+    sb.from('study_sections_config').select('*'),
+    sb.from('notices').select('*, profiles:posted_by(id,name)').order('created_at',{ascending:false}).limit(300),
+    sb.from('events').select('*, profiles:created_by(id,name)').order('event_date',{ascending:false}).limit(300),
+    sb.from('lost_found').select('*, profiles:posted_by(id,name)').order('created_at',{ascending:false}).limit(300),
+    sb.from('blood_requests').select('*, profiles:posted_by(id,name)').order('created_at',{ascending:false}).limit(300),
+    sb.from('study_notes').select('*, profiles:uploaded_by(id,name)').order('created_at',{ascending:false}).limit(300),
+    sb.from('study_routine').select('*').limit(300),
+    sb.from('study_exams').select('*').order('exam_date',{ascending:false}).limit(300),
+    sb.from('study_videos').select('*, profiles:uploaded_by(id,name)').order('created_at',{ascending:false}).limit(300),
+    sb.from('quiz_questions').select('*').limit(300)
+  ]);
+  cache.studySections = {}; (cfg||[]).forEach(r=>{ cache.studySections[r.section_id] = !!r.active; });
+  cache.notices = notices||[]; cache.events = events||[]; cache.lostFound = lf||[];
+  cache.bloodRequests = br||[]; cache.studyNotes = sn||[]; cache.studyRoutine = sr||[];
+  cache.studyExams = se||[]; cache.studyVideos = sv||[]; cache.quizQuestions = qq||[];
+  if(currentTab==='study') renderStudyControl(document.getElementById('mainContent'));
+}
+
+function updateDots(){
+  const pendingUsers = cache.profiles.filter(p=>p.status==='pending').length;
+  const pendingReq = cache.changeRequests.filter(r=>r.status==='pending').length;
+  const pendingRep = cache.reports.filter(r=>r.status==='pending').length;
+  setDot('dotUsers', pendingUsers);
+  setDot('dotRequests', pendingReq);
+  setDot('dotReports', pendingRep);
+}
+function setDot(id, n){
+  const el = document.getElementById(id);
+  if(n>0){ el.textContent = n; el.classList.remove('hidden'); } else { el.classList.add('hidden'); }
+}
+
+function switchTab(tab){
+  currentTab = tab;
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.toggle('active', n.dataset.tab===tab));
+  renderTab();
+}
+
+function renderTab(){
+  const el = document.getElementById('mainContent');
+  if(currentTab==='dashboard') return renderDashboard(el);
+  if(currentTab==='users') return renderUsers(el);
+  if(currentTab==='study') return renderStudyControl(el);
+  if(currentTab==='posts') return renderPosts(el);
+  if(currentTab==='stories') return renderStories(el);
+  if(currentTab==='requests') return renderRequests(el);
+  if(currentTab==='reports') return renderReports(el);
+  if(currentTab==='invites') return renderInvites(el);
+}
+
+// ============================================================
+// DASHBOARD
+// ============================================================
+function renderDashboard(el){
+  const p = cache.profiles;
+  const pending = p.filter(x=>x.status==='pending').length;
+  const banned = p.filter(x=>x.status==='banned').length;
+  const approved = p.filter(x=>x.status==='approved').length;
+  el.innerHTML = `
+    <div class="page-title">Dashboard</div>
+    <div class="page-sub">Campus Adda-র সব কিছুর সংক্ষিপ্ত চিত্র</div>
+    <div class="stat-grid">
+      <div class="stat-card"><div class="stat-num">${p.length}</div><div class="stat-label">মোট ইউজার</div></div>
+      <div class="stat-card ${pending?'warn':''}"><div class="stat-num">${pending}</div><div class="stat-label">Approval বাকি</div></div>
+      <div class="stat-card ok"><div class="stat-num">${approved}</div><div class="stat-label">Approved</div></div>
+      <div class="stat-card ${banned?'danger':''}"><div class="stat-num">${banned}</div><div class="stat-label">Banned</div></div>
+      <div class="stat-card"><div class="stat-num">${cache.posts.length}</div><div class="stat-label">মোট পোস্ট</div></div>
+      <div class="stat-card"><div class="stat-num">${cache.stories.length}</div><div class="stat-label">মোট স্টোরি</div></div>
+      <div class="stat-card ${cache.changeRequests.filter(r=>r.status==='pending').length?'warn':''}"><div class="stat-num">${cache.changeRequests.filter(r=>r.status==='pending').length}</div><div class="stat-label">Change Request বাকি</div></div>
+      <div class="stat-card ${cache.reports.filter(r=>r.status==='pending').length?'danger':''}"><div class="stat-num">${cache.reports.filter(r=>r.status==='pending').length}</div><div class="stat-label">Report বাকি</div></div>
+    </div>
+    ${pending>0?`<div class="item-card" style="border-color:#F4A26144;"><div class="item-name">⚠️ ${pending} জন নতুন ইউজার Approval এর অপেক্ষায় আছে</div><div class="item-meta" style="margin-top:6px;">Users ট্যাবে গিয়ে Approve করো</div></div>`:''}
+  `;
+}
+
+// ============================================================
+// USERS
+// ============================================================
+let userFilter = { search:'', status:'all', role:'all' };
+function renderUsers(el){
+  el.innerHTML = `
+    <div class="page-title">Users</div>
+    <div class="page-sub">সব ইউজার — approve, ban, edit, delete</div>
+    <div class="toolbar">
+      <input class="search-input" id="userSearchInput" placeholder="নাম, username, roll খুঁজো..." oninput="userFilter.search=this.value; renderUsersList()" value="${userFilter.search}">
+      <select class="filter-select" onchange="userFilter.status=this.value; renderUsersList()">
+        <option value="all" ${userFilter.status==='all'?'selected':''}>সব Status</option>
+        <option value="pending" ${userFilter.status==='pending'?'selected':''}>Pending</option>
+        <option value="approved" ${userFilter.status==='approved'?'selected':''}>Approved</option>
+        <option value="banned" ${userFilter.status==='banned'?'selected':''}>Banned</option>
+        <option value="deactivated" ${userFilter.status==='deactivated'?'selected':''}>Deactivated</option>
+      </select>
+      <select class="filter-select" onchange="userFilter.role=this.value; renderUsersList()">
+        <option value="all" ${userFilter.role==='all'?'selected':''}>সব Role</option>
+        <option value="student" ${userFilter.role==='student'?'selected':''}>Student</option>
+        <option value="teacher" ${userFilter.role==='teacher'?'selected':''}>Teacher</option>
+        <option value="cr" ${userFilter.role==='cr'?'selected':''}>CR</option>
+        <option value="admin" ${userFilter.role==='admin'?'selected':''}>Admin</option>
+      </select>
+    </div>
+    <div class="card-list" id="usersList"></div>
+  `;
+  renderUsersList();
+}
+// Only re-renders the list portion (#usersList) — NOT the toolbar/search input above it,
+// so typing in the search box no longer destroys and recreates the input (which was
+// causing it to lose focus after every single character).
+function renderUsersList(){
+  let list = cache.profiles.filter(u=>{
+    if(userFilter.status!=='all' && (u.status||'approved')!==userFilter.status) return false;
+    if(userFilter.role!=='all' && (u.role||'student')!==userFilter.role) return false;
+    if(userFilter.search){
+      const s = userFilter.search.toLowerCase();
+      if(!(u.name||'').toLowerCase().includes(s) && !(u.username||'').toLowerCase().includes(s) && !(u.roll||'').toLowerCase().includes(s) && !(u.email||'').toLowerCase().includes(s)) return false;
+    }
+    return true;
+  });
+  const wrap = document.getElementById('usersList');
+  if(!wrap) return;
+  if(!list.length){ wrap.innerHTML = `<div class="empty-state"><div class="icon">👤</div>কোনো ইউজার পাওয়া যায়নি</div>`; return; }
+  wrap.innerHTML = list.map(u => userCardHtml(u)).join('');
+}
+
+function userCardHtml(u){
+  const status = u.status||'approved';
+  const initial = (u.name||'?')[0];
+  return `
+    <div class="item-card">
+      <div class="item-row">
+        <div class="avatar-circle">${initial}</div>
+        <div class="item-main">
+          <div class="item-name">${esc(u.name||'নাম নেই')} <span style="color:var(--muted2);font-weight:500;">@${esc(u.username||'')}</span>${u.verified?' <span title="Verified" style="color:#4CC9F0;">✔️</span>':''}</div>
+          <div class="item-meta">${esc(u.dept||'-')} · ${esc(u.year||'-')} বর্ষ · Roll ${esc(u.roll||'-')} · ${esc(u.email||'')}</div>
+        </div>
+      </div>
+      <div style="margin-top:8px;">
+        <span class="badge ${status}">${statusLabel(status)}</span>
+        <span class="badge ${u.role==='admin'?'admin':u.role==='teacher'?'teacher':''}">${roleLabel(u.role)}</span>
+        ${u.member_tag==='og'?'<span class="badge" style="background:#FFD70022;color:#FFD700;">👑 OG</span>':''}
+        ${u.member_tag==='new'?'<span class="badge" style="background:#6C63FF22;color:#6C63FF;">🆕 New</span>':''}
+        ${u.custom_badge?`<span class="badge" style="background:#9B5DE522;color:#9B5DE5;">🏷️ ${esc(u.custom_badge)}</span>`:''}
+      </div>
+      <div class="item-actions">
+        ${status==='pending'?`<button class="mini-btn ok" onclick="setUserStatus('${u.id}','approved')">✅ Approve</button>`:''}
+        ${status!=='banned'?`<button class="mini-btn danger" onclick="setUserStatus('${u.id}','banned')">🚫 Ban</button>`:`<button class="mini-btn ok" onclick="setUserStatus('${u.id}','approved')">♻️ Unban</button>`}
+        <button class="mini-btn ${u.verified?'warn':'ok'}" onclick="toggleVerified('${u.id}')">${u.verified?'✖️ Unverify':'✔️ Verify'}</button>
+        <button class="mini-btn neutral" onclick="openEditUser('${u.id}')">✏️ Edit</button>
+        <button class="mini-btn danger" onclick="confirmDeleteUser('${u.id}')">🗑️ Delete</button>
+      </div>
+    </div>`;
+}
+function statusLabel(s){ return ({pending:'⏳ Pending',approved:'✅ Approved',banned:'🚫 Banned',deactivated:'😴 Deactivated'})[s]||s; }
+function roleLabel(r){ return ({student:'Student',teacher:'Teacher',cr:'CR',admin:'Admin'})[r]||r||'Student'; }
+function esc(s){ return String(s??'').replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+async function setUserStatus(id, status){
+  const { error } = await sb.from('profiles').update({ status }).eq('id', id);
+  if(error){ toast('❌ '+error.message); return; }
+  toast(status==='approved'?'✅ Approve করা হয়েছে':status==='banned'?'🚫 Ban করা হয়েছে':'✅ আপডেট হয়েছে');
+  const u = cache.profiles.find(x=>x.id===id); if(u) u.status=status;
+  updateDots(); renderUsersList();
+}
+async function toggleVerified(id){
+  const u = cache.profiles.find(x=>x.id===id); if(!u) return;
+  const next = !u.verified;
+  const { error } = await sb.from('profiles').update({ verified: next }).eq('id', id);
+  if(error){ toast('❌ '+error.message); return; }
+  u.verified = next;
+  toast(next?'✔️ Verified করা হয়েছে':'✖️ Verification সরানো হয়েছে');
+  renderUsersList();
+}
+
+function confirmDeleteUser(id){
+  const u = cache.profiles.find(x=>x.id===id);
+  if(!u) return;
+  if(!confirm(`"${u.name}" কে Delete করবে? এতে তার প্রোফাইল ডাটা মুছে যাবে এবং অ্যাকাউন্ট চিরতরে Ban হয়ে যাবে (login করতে পারবে না)। এই কাজ Undo করা যাবে না। নিশ্চিত?`)) return;
+  deleteUser(id);
+}
+async function deleteUser(id){
+  // NOTE: anon/publishable key দিয়ে auth.users (login credential) সরাসরি delete
+  // করা যায় না — এটার জন্য Supabase Service Role key লাগে যেটা client-side
+  // এ রাখা নিরাপদ না। তাই এখানে "soft delete" করা হচ্ছে: profile scrub +
+  // status='banned' যাতে সে আর কখনো login করতে না পারে বা visible না থাকে।
+  const { error } = await sb.from('profiles').update({
+    status:'banned', name:'Deleted User', bio:'', avatar_url:null,
+    dept:null, year:null, roll:null, blood_group:null, designation:null
+  }).eq('id', id);
+  if(error){ toast('❌ '+error.message); return; }
+  toast('🗑️ ইউজার Delete করা হয়েছে');
+  await loadAllData();
+}
+
+let editingUserId = null;
+function openEditUser(id){
+  const u = cache.profiles.find(x=>x.id===id); if(!u) return;
+  editingUserId = id;
+  const modal = document.createElement('div');
+  modal.className = 'modal-backdrop';
+  modal.id = 'editUserModal';
+  modal.onclick = (e)=>{ if(e.target===modal) modal.remove(); };
+  modal.innerHTML = `
+    <div class="modal-box" style="position:relative;">
+      <div class="close-x" onclick="document.getElementById('editUserModal').remove()">✕</div>
+      <div class="modal-title">✏️ ইউজার Edit করো</div>
+      <div class="field"><label>নাম</label><input id="edName" value="${esc(u.name||'')}"></div>
+      <div class="field"><label>বিভাগ (Dept)</label><input id="edDept" value="${esc(u.dept||'')}"></div>
+      <div class="field"><label>বর্ষ (Year)</label><input id="edYear" value="${esc(u.year||'')}"></div>
+      <div class="field"><label>Roll</label><input id="edRoll" value="${esc(u.roll||'')}"></div>
+      <div class="field"><label>Blood Group</label><input id="edBlood" value="${esc(u.blood_group||'')}"></div>
+      <div class="field"><label>Designation</label><input id="edDesig" value="${esc(u.designation||'')}"></div>
+      <div class="field">
+        <label>Role</label>
+        <select id="edRole">
+          <option value="student" ${u.role==='student'?'selected':''}>Student</option>
+          <option value="cr" ${u.role==='cr'?'selected':''}>CR</option>
+          <option value="teacher" ${u.role==='teacher'?'selected':''}>Teacher</option>
+          <option value="admin" ${u.role==='admin'?'selected':''}>Admin</option>
+        </select>
+        ${u.role==='admin'?`<div style="font-size:10.5px;color:var(--muted2);margin-top:5px;">🛡️ Admin role — এই ইউজারের প্রোফাইলে বিভাগ/বর্ষ দেখানো হবে না</div>`:''}
+      </div>
+      <div class="field" style="border-top:1px solid var(--border2);padding-top:12px;">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+          <input type="checkbox" id="edVerified" ${u.verified?'checked':''} style="width:16px;height:16px;">
+          ✔️ Verified (Blue Tick)
+        </label>
+      </div>
+      <div class="field">
+        <label>Member Tag</label>
+        <select id="edMemberTag">
+          <option value="" ${!u.member_tag?'selected':''}>— None (Auto) —</option>
+          <option value="new" ${u.member_tag==='new'?'selected':''}>🆕 New User</option>
+          <option value="og" ${u.member_tag==='og'?'selected':''}>👑 OG User</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Title Badge</label>
+        <select id="edBadgePreset" onchange="document.getElementById('edBadgeCustomWrap').classList.toggle('hidden', this.value!=='custom')">
+          <option value="" ${!u.custom_badge?'selected':''}>— None —</option>
+          <option value="developer" ${u.custom_badge==='developer'?'selected':''}>🛠️ Developer</option>
+          <option value="owner" ${u.custom_badge==='owner'?'selected':''}>👑 Owner</option>
+          <option value="support" ${u.custom_badge==='support'?'selected':''}>🎧 Support</option>
+          <option value="custom" ${(u.custom_badge && !['developer','owner','support'].includes(u.custom_badge))?'selected':''}>✏️ Custom...</option>
+        </select>
+      </div>
+      <div class="field ${(u.custom_badge && !['developer','owner','support'].includes(u.custom_badge))?'':'hidden'}" id="edBadgeCustomWrap">
+        <label>Custom Badge টেক্সট</label>
+        <input id="edBadgeCustomText" placeholder="যেমন: Moderator" value="${(u.custom_badge && !['developer','owner','support'].includes(u.custom_badge))?esc(u.custom_badge):''}">
+        <input id="edBadgeCustomIcon" placeholder="ইমোজি আইকন (যেমন: 🌟)" value="${esc(u.custom_badge_icon||'')}" style="margin-top:6px;">
+      </div>
+      <div class="modal-actions">
+        <button class="mini-btn neutral" style="flex:1;padding:10px;" onclick="document.getElementById('editUserModal').remove()">বাতিল</button>
+        <button class="btn-primary" style="flex:1;" onclick="saveEditUser()">Save করো</button>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+}
+async function saveEditUser(){
+  const presetVal = document.getElementById('edBadgePreset').value;
+  const custom_badge = presetVal==='custom' ? (document.getElementById('edBadgeCustomText').value.trim() || null) : (presetVal || null);
+  const custom_badge_icon = presetVal==='custom' ? (document.getElementById('edBadgeCustomIcon').value.trim() || null) : null;
+  const updates = {
+    name: document.getElementById('edName').value.trim(),
+    dept: document.getElementById('edDept').value.trim(),
+    year: document.getElementById('edYear').value.trim(),
+    roll: document.getElementById('edRoll').value.trim(),
+    blood_group: document.getElementById('edBlood').value.trim(),
+    designation: document.getElementById('edDesig').value.trim(),
+    role: document.getElementById('edRole').value,
+    verified: document.getElementById('edVerified').checked,
+    member_tag: document.getElementById('edMemberTag').value || null,
+    custom_badge, custom_badge_icon
+  };
+  const { error } = await sb.from('profiles').update(updates).eq('id', editingUserId);
+  if(error){ toast('❌ '+error.message); return; }
+  toast('✅ ইউজার আপডেট হয়েছে');
+  document.getElementById('editUserModal')?.remove();
+  await loadAllData();
+}
+
+// ============================================================
+// STUDY CONTROL — lock/unlock sections + moderate their content
+// ============================================================
+// Mirrors index-2.html's STUDY_SECTIONS list (id/name/group/icon) so admin can
+// toggle each section's lock state. New sections added on the main app side
+// should be added here too to appear in this list.
+const STUDY_SECTIONS_ADMIN = [
+  { id:"noticeboard", group:"কলেজ জোন", icon:"📌", name:"Noticeboard" },
+  { id:"lostfound", group:"কলেজ জোন", icon:"🔎", name:"Lost & Found" },
+  { id:"events", group:"কলেজ জোন", icon:"🎉", name:"Event Page" },
+  { id:"bloodgroup", group:"ইমার্জেন্সি ও সেফটি", icon:"🩸", name:"Blood Group Directory" },
+  { id:"bloodreq", group:"ইমার্জেন্সি ও সেফটি", icon:"🆘", name:"Blood Donation Requests" },
+  { id:"notes", group:"কন্টেন্ট ও রিসোর্স", icon:"📝", name:"Notes Sharing" },
+  { id:"qbank", group:"কন্টেন্ট ও রিসোর্স", icon:"📄", name:"Question Bank" },
+  { id:"syllabus", group:"কন্টেন্ট ও রিসোর্স", icon:"📑", name:"Syllabus Viewer" },
+  { id:"routine", group:"কন্টেন্ট ও রিসোর্স", icon:"🗓️", name:"Class Routine" },
+  { id:"examroutine", group:"কন্টেন্ট ও রিসোর্স", icon:"🗂️", name:"Exam Routine" },
+  { id:"result", group:"কন্টেন্ট ও রিসোর্স", icon:"🎯", name:"Result Tracker" },
+  { id:"todo", group:"প্রোডাক্টিভিটি টুলস", icon:"✅", name:"To-Do List" },
+  { id:"pomodoro", group:"প্রোডাক্টিভিটি টুলস", icon:"⏱️", name:"Study Timer" },
+  { id:"flashcard", group:"প্রোডাক্টিভিটি টুলস", icon:"🗳️", name:"Flashcards" },
+  { id:"quiz", group:"প্রোডাক্টিভিটি টুলস", icon:"🧠", name:"Quiz / MCQ Practice" },
+  { id:"gpacalc", group:"প্রোডাক্টিভিটি টুলস", icon:"🧮", name:"GPA/CGPA Calculator" },
+  { id:"planner", group:"প্রোডাক্টিভিটি টুলস", icon:"📆", name:"Study Planner" },
+  { id:"studygroup", group:"সোশ্যাল-স্টাডি", icon:"👥", name:"Study Groups" },
+  { id:"qaforum", group:"সোশ্যাল-স্টাডি", icon:"💬", name:"Q&A Forum" },
+  { id:"doubt", group:"সোশ্যাল-স্টাডি", icon:"🆘", name:"Doubt Solving" },
+  { id:"leaderboard", group:"সোশ্যাল-স্টাডি", icon:"🏆", name:"Leaderboard" },
+  { id:"tutor", group:"সোশ্যাল-স্টাডি", icon:"🎓", name:"Tutor/Senior Connect" },
+  { id:"ebook", group:"রিসোর্স লাইব্রেরি", icon:"📚", name:"E-book / PDF Library" },
+  { id:"videolecture", group:"রিসোর্স লাইব্রেরি", icon:"🎬", name:"Video Lectures" },
+  { id:"linkbank", group:"রিসোর্স লাইব্রেরি", icon:"🔗", name:"Important Links" },
+  { id:"career", group:"রিসোর্স লাইব্রেরি", icon:"💼", name:"Career & Scholarship" },
+  { id:"assignreminder", group:"রিমাইন্ডার", icon:"⏰", name:"Assignment Reminder" },
+  { id:"examreminder", group:"রিমাইন্ডার", icon:"🔔", name:"Exam Reminder" },
+];
+// Sections that already have real Supabase-backed content the admin can moderate here.
+const STUDY_CONTENT_TABS = [
+  { key:'notices', label:'📌 Noticeboard' },
+  { key:'events', label:'🎉 Events' },
+  { key:'lostFound', label:'🔎 Lost & Found' },
+  { key:'bloodRequests', label:'🆘 Blood Requests' },
+  { key:'studyNotes', label:'📝 Notes' },
+  { key:'studyRoutine', label:'🗓️ Routine' },
+  { key:'studyExams', label:'🗂️ Exam Routine' },
+  { key:'studyVideos', label:'🎬 Video Lectures' },
+  { key:'quizQuestions', label:'🧠 Quiz Questions' },
+  { key:'studyTreeSubjects', label:'📖 বিষয় ট্রি (Video Lectures)' },
+];
+let studyContentTab = 'notices';
+function renderStudyControl(el){
+  const groups = [...new Set(STUDY_SECTIONS_ADMIN.map(s=>s.group))];
+  el.innerHTML = `
+    <div class="page-title">Study Control</div>
+    <div class="page-sub">Study Hub-এর প্রতিটা সেকশন Lock/Unlock করো, আর যেগুলো Unlocked সেগুলোর কন্টেন্ট মডারেট করো</div>
+    <div style="font-size:12.5px;font-weight:700;color:var(--text2);margin-bottom:10px;">🔓 সেকশন Lock / Unlock</div>
+    <div id="studyLockGrid">
+      ${groups.map(g=>`
+        <div class="study-group-label" style="padding:8px 0 4px;color:var(--muted2);font-size:10.5px;font-weight:700;text-transform:uppercase;">${g}</div>
+        <div class="card-list">
+          ${STUDY_SECTIONS_ADMIN.filter(s=>s.group===g).map(s=>{
+            const active = cache.studySections.hasOwnProperty(s.id) ? cache.studySections[s.id] : STUDY_DEFAULT_ACTIVE[s.id];
+            return `<div class="item-card" style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;">
+              <div style="display:flex;align-items:center;gap:10px;"><span style="font-size:16px;">${s.icon}</span><span style="font-size:12.5px;font-weight:600;">${s.name}</span></div>
+              <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:11px;color:${active?'var(--ok)':'var(--muted2)'};font-weight:700;">
+                ${active?'Unlocked':'Locked'}
+                <input type="checkbox" ${active?'checked':''} onchange="toggleStudySection('${s.id}', this.checked)">
+              </label>
+            </div>`;
+          }).join('')}
+        </div>`).join('')}
+    </div>
+    <div style="font-size:12.5px;font-weight:700;color:var(--text2);margin:22px 0 10px;">🗂️ কন্টেন্ট মডারেশন</div>
+    <div class="study-chip-row" style="display:flex;gap:8px;overflow-x:auto;padding-bottom:8px;">
+      ${STUDY_CONTENT_TABS.map(c=>`<button class="mini-btn ${studyContentTab===c.key?'ok':'neutral'}" onclick="studyContentTab='${c.key}';renderStudyControl(document.getElementById('mainContent'))">${c.label}</button>`).join('')}
+    </div>
+    <div class="card-list" id="studyContentList" style="margin-top:10px;"></div>
+  `;
+  renderStudyContentList();
+}
+// Default active/inactive state mirrors STUDY_SECTIONS.active from index-2.html — used
+// only until an explicit override exists in study_sections_config.
+const STUDY_DEFAULT_ACTIVE = {
+  noticeboard:true, lostfound:true, events:true, bloodgroup:true, bloodreq:true,
+  notes:true, qbank:false, syllabus:false, routine:true, examroutine:true, result:false,
+  todo:false, pomodoro:false, flashcard:false, quiz:true, gpacalc:false, planner:false,
+  studygroup:false, qaforum:false, doubt:false, leaderboard:false, tutor:false,
+  ebook:false, videolecture:true, linkbank:false, career:false, assignreminder:false, examreminder:false
+};
+async function toggleStudySection(id, active){
+  const { error } = await sb.from('study_sections_config').upsert({ section_id:id, active, updated_at:new Date().toISOString() });
+  if(error){ toast('❌ '+error.message); return; }
+  cache.studySections[id] = active;
+  toast(active?`🔓 '${id}' Unlock করা হয়েছে`:`🔒 '${id}' Lock করা হয়েছে`);
+  renderStudyControl(document.getElementById('mainContent'));
+}
+function renderStudyContentList(){
+  const wrap = document.getElementById('studyContentList');
+  if(!wrap) return;
+  const key = studyContentTab;
+  if(key==='studyTreeSubjects'){
+    wrap.innerHTML = renderTreeManager();
+    if(!treeNav._loadedOnce){ treeNav._loadedOnce = true; treeLoadYear(); }
+    return;
+  }
+  const list = cache[key]||[];
+  if(!list.length){ wrap.innerHTML = `<div class="empty-state"><div class="icon">📭</div>কোনো ডাটা নেই</div>`; return; }
+  wrap.innerHTML = list.map(item => studyItemCardHtml(key, item)).join('');
+}
+function studyItemCardHtml(key, item){
+  const del = `deleteStudyItem('${key}', ${item.id})`;
+  if(key==='notices') return `<div class="item-card">
+    <div class="item-name">${esc(item.title||'-')}</div>
+    <div class="item-meta">${esc(item.profiles?.name||'Unknown')} · ${esc(item.dept||'general')}</div>
+    <div class="post-text-preview">${esc(item.body||'')}</div>
+    <div class="item-actions"><button class="mini-btn danger" onclick="${del}">🗑️ Delete</button></div></div>`;
+  if(key==='events') return `<div class="item-card">
+    <div class="item-name">${esc(item.title||'-')}</div>
+    <div class="item-meta">${esc(item.profiles?.name||'Unknown')} · ${esc(item.event_date||'')} · ${esc(item.location||'')}</div>
+    <div class="item-actions"><button class="mini-btn danger" onclick="${del}">🗑️ Delete</button></div></div>`;
+  if(key==='lostFound') return `<div class="item-card">
+    <div class="item-name">${esc(item.item_name||'-')} <span class="badge ${item.type==='lost'?'pending':'approved'}">${esc(item.type||'')}</span></div>
+    <div class="item-meta">${esc(item.profiles?.name||'Unknown')} · ${esc(item.location||'')}</div>
+    <div class="post-text-preview">${esc(item.description||'')}</div>
+    <div class="item-actions"><button class="mini-btn danger" onclick="${del}">🗑️ Delete</button></div></div>`;
+  if(key==='bloodRequests') return `<div class="item-card">
+    <div class="item-name">🩸 ${esc(item.blood_group||'-')} <span class="badge ${item.fulfilled?'approved':'pending'}">${item.fulfilled?'Fulfilled':'Open'}</span></div>
+    <div class="item-meta">${esc(item.profiles?.name||'Unknown')} · ${esc(item.hospital||'')} · ${esc(item.contact||'')}</div>
+    <div class="item-actions"><button class="mini-btn danger" onclick="${del}">🗑️ Delete</button></div></div>`;
+  if(key==='studyNotes') return `<div class="item-card">
+    <div class="item-name">${esc(item.title||'-')}</div>
+    <div class="item-meta">${esc(item.profiles?.name||'Unknown')} · ${esc(item.dept||item.subject||'')}</div>
+    <div class="item-actions"><button class="mini-btn danger" onclick="${del}">🗑️ Delete</button></div></div>`;
+  if(key==='studyRoutine') return `<div class="item-card">
+    <div class="item-name">${esc(item.day||'-')} · ${esc(item.subject||item.dept||'')}</div>
+    <div class="item-meta">${esc(item.time_slot||'')} · Room ${esc(item.room||'-')} · ${esc(item.year||'')}</div>
+    <div class="item-actions"><button class="mini-btn danger" onclick="${del}">🗑️ Delete</button></div></div>`;
+  if(key==='studyExams') return `<div class="item-card">
+    <div class="item-name">${esc(item.subject||item.dept||'-')}</div>
+    <div class="item-meta">${esc(item.exam_date||'')} · ${esc(item.notes||'')}</div>
+    <div class="item-actions"><button class="mini-btn danger" onclick="${del}">🗑️ Delete</button></div></div>`;
+  if(key==='studyVideos') return `<div class="item-card">
+    <div class="item-name">${esc(item.title||'-')}</div>
+    <div class="item-meta">${esc(item.profiles?.name||'Unknown')} · ${esc(item.dept||item.subject||'')}</div>
+    <div class="post-text-preview" style="word-break:break-all;">${esc(item.video_url||'')}</div>
+    <div class="item-actions"><button class="mini-btn danger" onclick="${del}">🗑️ Delete</button></div></div>`;
+  if(key==='quizQuestions') return `<div class="item-card">
+    <div class="item-name">${esc(item.question||'-')}</div>
+    <div class="item-meta">${esc(item.subject||'')} · ${esc(item.dept||'')}</div>
+    <div class="item-actions"><button class="mini-btn danger" onclick="${del}">🗑️ Delete</button></div></div>`;
+  return '';
+}
+const STUDY_TABLE_NAME = {
+  notices:'notices', events:'events', lostFound:'lost_found', bloodRequests:'blood_requests',
+  studyNotes:'study_notes', studyRoutine:'study_routine', studyExams:'study_exams',
+  studyVideos:'study_videos', quizQuestions:'quiz_questions'
+};
+async function deleteStudyItem(key, id){
+  if(!confirm('এই আইটেমটা Delete করবে?')) return;
+  const table = STUDY_TABLE_NAME[key];
+  const { error } = await sb.from(table).delete().eq('id', id);
+  if(error){ toast('❌ '+error.message); return; }
+  cache[key] = (cache[key]||[]).filter(x=>x.id!==id);
+  toast('🗑️ Delete হয়েছে');
+  renderStudyContentList();
+}
+
+// ============================================================
+// STUDY TREE MANAGER — বিষয়/অধ্যায়/ইউনিট/PDF/ভিডিও: add + edit + delete
+// Mirrors the hierarchy used in campus-adda-v2.html's Video Lectures explorer,
+// but lets the admin manage ANY dept/year from one place without needing an
+// admin/teacher/cr account inside the main app.
+// ============================================================
+const TREE_DEPARTMENTS = [
+  { id:"bangla", name:"বাংলা" }, { id:"english", name:"ইংরেজি" }, { id:"math", name:"গণিত" },
+  { id:"physics", name:"পদার্থবিজ্ঞান" }, { id:"chemistry", name:"রসায়ন" }, { id:"biology", name:"জীববিজ্ঞান" },
+  { id:"history", name:"ইতিহাস" }, { id:"accounting", name:"হিসাববিজ্ঞান" }, { id:"economics", name:"অর্থনীতি" },
+  { id:"ict", name:"তথ্যপ্রযুক্তি" },
+];
+const TREE_YEARS = ['১ম বর্ষ','২য় বর্ষ','৩য় বর্ষ','৪র্থ বর্ষ'];
+
+let treeNav = { dept: TREE_DEPARTMENTS[0].id, year: TREE_YEARS[0], level:'subject', subjects:[], subjIdx:null, chapIdx:null, unitIdx:null, loading:false, _loadedOnce:false };
+
+function treeCurrentSubject(){ return treeNav.subjects[treeNav.subjIdx]; }
+function treeCurrentChapter(){ const s=treeCurrentSubject(); return s && s.chapters[treeNav.chapIdx]; }
+function treeCurrentUnit(){ const c=treeCurrentChapter(); return c && c.units[treeNav.unitIdx]; }
+
+async function treeLoadYear(){
+  treeNav.loading = true; renderStudyContentList();
+  const { data: nodes, error } = await sb.from('study_tree_nodes').select('*')
+    .eq('dept', treeNav.dept).eq('year', treeNav.year)
+    .order('sort_order', { ascending:true }).order('created_at', { ascending:true });
+  treeNav.loading = false;
+  if(error){ toast('❌ '+error.message); return; }
+  treeNav.subjects = (nodes||[]).filter(n=>n.kind==='subject').map(s=>({
+    id:s.id, name:s.name,
+    chapters:(nodes||[]).filter(c=>c.kind==='chapter' && c.parent_id===s.id).map(c=>({
+      id:c.id, name:c.name,
+      units:(nodes||[]).filter(u=>u.kind==='unit' && u.parent_id===c.id).map(u=>({ id:u.id, name:u.name, pdfs:[], videos:[], loaded:false }))
+    }))
+  }));
+  renderStudyContentList();
+}
+function treeChangeDept(v){ treeNav.dept=v; treeNav.level='subject'; treeNav.subjIdx=treeNav.chapIdx=treeNav.unitIdx=null; treeLoadYear(); }
+function treeChangeYear(v){ treeNav.year=v; treeNav.level='subject'; treeNav.subjIdx=treeNav.chapIdx=treeNav.unitIdx=null; treeLoadYear(); }
+function treeOpenSubject(i){ treeNav.subjIdx=i; treeNav.chapIdx=treeNav.unitIdx=null; treeNav.level='chapter'; renderStudyContentList(); }
+function treeOpenChapter(i){ treeNav.chapIdx=i; treeNav.unitIdx=null; treeNav.level='unit'; renderStudyContentList(); }
+function treeOpenUnit(i){ treeNav.unitIdx=i; treeNav.level='detail'; renderStudyContentList(); treeLoadUnitDetail(); }
+function treeGoBack(){
+  const order=['subject','chapter','unit','detail'];
+  treeNav.level = order[Math.max(0, order.indexOf(treeNav.level)-1)];
+  renderStudyContentList();
+}
+
+async function treeLoadUnitDetail(){
+  const unit = treeCurrentUnit(); if(!unit || unit.loaded) return;
+  const [{data:pdfs,error:e1},{data:vids,error:e2}] = await Promise.all([
+    sb.from('study_tree_resources').select('*').eq('unit_id', unit.id).order('created_at',{ascending:true}),
+    sb.from('study_tree_videos').select('*').eq('unit_id', unit.id).order('created_at',{ascending:true})
+  ]);
+  if(e1) console.warn('study_tree_resources', e1);
+  if(e2) console.warn('study_tree_videos', e2);
+  unit.pdfs = pdfs||[]; unit.videos = vids||[]; unit.loaded = true;
+  if(treeNav.level==='detail') renderStudyContentList();
+}
+
+async function treeAddNode(kind){
+  const label = kind==='subject'?'নতুন বিষয়ের নাম:':kind==='chapter'?'নতুন অধ্যায়ের নাম:':'নতুন ইউনিটের নাম:';
+  const name = prompt(label);
+  if(!name || !name.trim()) return;
+  let parentId = null;
+  if(kind==='chapter') parentId = treeCurrentSubject().id;
+  else if(kind==='unit') parentId = treeCurrentChapter().id;
+  const { data, error } = await sb.from('study_tree_nodes')
+    .insert({ kind, dept:treeNav.dept, year:treeNav.year, parent_id:parentId, name:name.trim(), created_by:ME_ADMIN.id||null })
+    .select().single();
+  if(error){ toast('❌ '+error.message); return; }
+  if(kind==='subject') treeNav.subjects.push({ id:data.id, name:name.trim(), chapters:[] });
+  else if(kind==='chapter') treeCurrentSubject().chapters.push({ id:data.id, name:name.trim(), units:[] });
+  else if(kind==='unit') treeCurrentChapter().units.push({ id:data.id, name:name.trim(), pdfs:[], videos:[], loaded:true });
+  toast('✅ যোগ হয়েছে');
+  renderStudyContentList();
+}
+
+async function treeEditNode(kind, idx){
+  let node;
+  if(kind==='subject') node = treeNav.subjects[idx];
+  else if(kind==='chapter') node = treeCurrentSubject().chapters[idx];
+  else if(kind==='unit') node = treeCurrentChapter().units[idx];
+  if(!node) return;
+  const name = prompt('নতুন নাম:', node.name);
+  if(!name || !name.trim() || name.trim()===node.name) return;
+  const { error } = await sb.from('study_tree_nodes').update({ name:name.trim() }).eq('id', node.id);
+  if(error){ toast('❌ '+error.message); return; }
+  node.name = name.trim();
+  toast('✅ Update হয়েছে');
+  renderStudyContentList();
+}
+
+async function treeDeleteNode(kind, idx){
+  let list, node;
+  if(kind==='subject'){ list=treeNav.subjects; node=list[idx]; }
+  else if(kind==='chapter'){ list=treeCurrentSubject().chapters; node=list[idx]; }
+  else if(kind==='unit'){ list=treeCurrentChapter().units; node=list[idx]; }
+  if(!node) return;
+  if(!confirm(`"${node.name}" ডিলিট করবে? এর ভেতরের সব অধ্যায়/ইউনিট/PDF/ভিডিও সহ স্থায়ীভাবে মুছে যাবে।`)) return;
+  const { error } = await sb.from('study_tree_nodes').delete().eq('id', node.id);
+  if(error){ toast('❌ '+error.message); return; }
+  list.splice(idx,1);
+  toast('🗑️ Delete হয়েছে');
+  renderStudyContentList();
+}
+
+async function treeAddResourceLink(){
+  const unit = treeCurrentUnit(); if(!unit) return;
+  const title = prompt('রিসোর্সের শিরোনাম:'); if(!title || !title.trim()) return;
+  const url = prompt('PDF/ছবির লিংক (URL):'); if(!url || !url.trim()) return;
+  const { data, error } = await sb.from('study_tree_resources')
+    .insert({ unit_id:unit.id, title:title.trim(), type:'formula', url:url.trim(), created_by:ME_ADMIN.id||null }).select().single();
+  if(error){ toast('❌ '+error.message); return; }
+  unit.pdfs.push(data);
+  toast('✅ যোগ হয়েছে');
+  renderStudyContentList();
+}
+async function treeDeleteResource(resId){
+  if(!confirm('এই রিসোর্স ডিলিট করবে?')) return;
+  const { error } = await sb.from('study_tree_resources').delete().eq('id', resId);
+  if(error){ toast('❌ '+error.message); return; }
+  const unit = treeCurrentUnit();
+  unit.pdfs = unit.pdfs.filter(p=>p.id!==resId);
+  toast('🗑️ Delete হয়েছে');
+  renderStudyContentList();
+}
+
+async function treeAddVideo(){
+  const unit = treeCurrentUnit(); if(!unit) return;
+  const title = prompt('ভিডিও ক্লাসের নাম:'); if(!title || !title.trim()) return;
+  const url = prompt('ইউটিউব লিংক:'); if(!url || !url.trim()) return;
+  const { data, error } = await sb.from('study_tree_videos')
+    .insert({ unit_id:unit.id, title:title.trim(), url:url.trim(), created_by:ME_ADMIN.id||null }).select().single();
+  if(error){ toast('❌ '+error.message); return; }
+  unit.videos.push(data);
+  toast('✅ যোগ হয়েছে');
+  renderStudyContentList();
+}
+async function treeDeleteVideo(vidId){
+  if(!confirm('এই ভিডিও ডিলিট করবে?')) return;
+  const { error } = await sb.from('study_tree_videos').delete().eq('id', vidId);
+  if(error){ toast('❌ '+error.message); return; }
+  const unit = treeCurrentUnit();
+  unit.videos = unit.videos.filter(v=>v.id!==vidId);
+  toast('🗑️ Delete হয়েছে');
+  renderStudyContentList();
+}
+
+function renderTreeManager(){
+  let html = `
+    <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;">
+      <select onchange="treeChangeDept(this.value)" style="flex:1;min-width:140px;">
+        ${TREE_DEPARTMENTS.map(d=>`<option value="${d.id}" ${d.id===treeNav.dept?'selected':''}>${d.name}</option>`).join('')}
+      </select>
+      <select onchange="treeChangeYear(this.value)" style="flex:1;min-width:110px;">
+        ${TREE_YEARS.map(y=>`<option value="${esc(y)}" ${y===treeNav.year?'selected':''}>${esc(y)}</option>`).join('')}
+      </select>
+    </div>`;
+  if(treeNav.level!=='subject'){
+    let crumb = (TREE_DEPARTMENTS.find(d=>d.id===treeNav.dept)||{}).name + ' • ' + treeNav.year;
+    if(treeNav.subjIdx!=null && treeCurrentSubject()) crumb += ' › ' + esc(treeCurrentSubject().name);
+    if(treeNav.chapIdx!=null && treeCurrentChapter()) crumb += ' › ' + esc(treeCurrentChapter().name);
+    if(treeNav.unitIdx!=null && treeCurrentUnit()) crumb += ' › ' + esc(treeCurrentUnit().name);
+    html += `<div style="font-size:11px;color:var(--muted2);margin-bottom:8px;">${crumb}</div>
+      <button class="mini-btn neutral" style="margin-bottom:10px;" onclick="treeGoBack()">← পিছনে</button>`;
+  }
+  if(treeNav.loading) return html + `<div class="empty-state"><div class="icon">⏳</div>লোড হচ্ছে...</div>`;
+
+  if(treeNav.level==='subject'){
+    const subs = treeNav.subjects;
+    html += subs.length ? subs.map((s,i)=>`
+      <div class="item-card" style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+        <div style="flex:1;min-width:0;cursor:pointer;" onclick="treeOpenSubject(${i})">
+          <div class="item-name">📖 ${esc(s.name)}</div>
+          <div class="item-meta">${s.chapters.length} টি অধ্যায়</div>
+        </div>
+        <div style="display:flex;gap:6px;flex-shrink:0;">
+          <button class="mini-btn neutral" onclick="treeEditNode('subject',${i})">✏️</button>
+          <button class="mini-btn danger" onclick="treeDeleteNode('subject',${i})">🗑️</button>
+        </div>
+      </div>`).join('') : `<div class="empty-state"><div class="icon">📚</div>কোনো বিষয় নেই</div>`;
+    html += `<button class="mini-btn ok" style="width:100%;margin-top:8px;padding:10px;" onclick="treeAddNode('subject')">➕ নতুন বিষয় যোগ করো</button>`;
+  } else if(treeNav.level==='chapter'){
+    const subj = treeCurrentSubject(); if(!subj) return html;
+    html += subj.chapters.length ? subj.chapters.map((c,i)=>`
+      <div class="item-card" style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+        <div style="flex:1;min-width:0;cursor:pointer;" onclick="treeOpenChapter(${i})">
+          <div class="item-name">📑 ${esc(c.name)}</div>
+          <div class="item-meta">${c.units.length} টি ইউনিট</div>
+        </div>
+        <div style="display:flex;gap:6px;flex-shrink:0;">
+          <button class="mini-btn neutral" onclick="treeEditNode('chapter',${i})">✏️</button>
+          <button class="mini-btn danger" onclick="treeDeleteNode('chapter',${i})">🗑️</button>
+        </div>
+      </div>`).join('') : `<div class="empty-state"><div class="icon">📑</div>কোনো অধ্যায় নেই</div>`;
+    html += `<button class="mini-btn ok" style="width:100%;margin-top:8px;padding:10px;" onclick="treeAddNode('chapter')">➕ নতুন অধ্যায় যোগ করো</button>`;
+  } else if(treeNav.level==='unit'){
+    const chap = treeCurrentChapter(); if(!chap) return html;
+    html += chap.units.length ? chap.units.map((u,i)=>`
+      <div class="item-card" style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+        <div style="flex:1;min-width:0;cursor:pointer;" onclick="treeOpenUnit(${i})">
+          <div class="item-name">🧩 ${esc(u.name)}</div>
+        </div>
+        <div style="display:flex;gap:6px;flex-shrink:0;">
+          <button class="mini-btn neutral" onclick="treeEditNode('unit',${i})">✏️</button>
+          <button class="mini-btn danger" onclick="treeDeleteNode('unit',${i})">🗑️</button>
+        </div>
+      </div>`).join('') : `<div class="empty-state"><div class="icon">🧩</div>কোনো ইউনিট নেই</div>`;
+    html += `<button class="mini-btn ok" style="width:100%;margin-top:8px;padding:10px;" onclick="treeAddNode('unit')">➕ নতুন ইউনিট যোগ করো</button>`;
+  } else if(treeNav.level==='detail'){
+    const unit = treeCurrentUnit(); if(!unit) return html;
+    if(!unit.loaded) return html + `<div class="empty-state"><div class="icon">⏳</div>লোড হচ্ছে...</div>`;
+    html += `<div style="font-size:12.5px;font-weight:700;color:var(--text2);margin:10px 0 6px;">📄 রিসোর্স (PDF/ছবি)</div>`;
+    html += (unit.pdfs&&unit.pdfs.length) ? unit.pdfs.map(p=>`
+      <div class="item-card">
+        <div class="item-name">${esc(p.title)}</div>
+        <div class="post-text-preview" style="word-break:break-all;">${esc(p.url)}</div>
+        <div class="item-actions"><button class="mini-btn danger" onclick="treeDeleteResource('${p.id}')">🗑️ Delete</button></div>
+      </div>`).join('') : `<div class="empty-state" style="padding:14px;"><div class="icon">📄</div>কোনো রিসোর্স নেই</div>`;
+    html += `<button class="mini-btn ok" style="width:100%;margin:8px 0 16px;padding:10px;" onclick="treeAddResourceLink()">➕ রিসোর্স যোগ করো</button>`;
+
+    html += `<div style="font-size:12.5px;font-weight:700;color:var(--text2);margin:10px 0 6px;">🎬 ভিডিও ক্লাস</div>`;
+    html += (unit.videos&&unit.videos.length) ? unit.videos.map(v=>`
+      <div class="item-card">
+        <div class="item-name">${esc(v.title)}</div>
+        <div class="post-text-preview" style="word-break:break-all;">${esc(v.url)}</div>
+        <div class="item-actions"><button class="mini-btn danger" onclick="treeDeleteVideo('${v.id}')">🗑️ Delete</button></div>
+      </div>`).join('') : `<div class="empty-state" style="padding:14px;"><div class="icon">🎬</div>কোনো ভিডিও নেই</div>`;
+    html += `<button class="mini-btn ok" style="width:100%;margin-top:8px;padding:10px;" onclick="treeAddVideo()">➕ ভিডিও যোগ করো</button>`;
+  }
+  return html;
+}
+
+// ============================================================
+// POSTS
+// ============================================================
+function renderPosts(el){
+  el.innerHTML = `
+    <div class="page-title">Posts</div>
+    <div class="page-sub">সব পোস্ট মডারেশন (সর্বশেষ ২০০টা)</div>
+    <div class="card-list" id="postsList"></div>
+  `;
+  const wrap = document.getElementById('postsList');
+  if(!cache.posts.length){ wrap.innerHTML = `<div class="empty-state"><div class="icon">📝</div>কোনো পোস্ট নেই</div>`; return; }
+  wrap.innerHTML = cache.posts.map(p => `
+    <div class="item-card">
+      <div class="item-row">
+        <div class="avatar-circle">${(p.profiles?.name||'?')[0]}</div>
+        <div class="item-main">
+          <div class="item-name">${esc(p.profiles?.name||'Unknown')}</div>
+          <div class="item-meta">${esc(p.dept||'')} · ${p.created_at?new Date(p.created_at).toLocaleString('bn-BD'):''}</div>
+        </div>
+      </div>
+      <div class="post-text-preview">${esc(p.text||'')}</div>
+      ${p.image_url?`<img src="${p.image_url}" class="post-img-preview">`:''}
+      <div class="item-actions">
+        <button class="mini-btn danger" onclick="deletePost(${p.id})">🗑️ Delete Post</button>
+      </div>
+    </div>`).join('');
+}
+async function deletePost(id){
+  if(!confirm('এই পোস্ট Delete করবে?')) return;
+  await doDeletePost(id);
+}
+async function doDeletePost(id){
+  const { error } = await sb.from('posts').delete().eq('id', id);
+  if(error){ toast('❌ '+error.message); return false; }
+  toast('🗑️ পোস্ট Delete হয়েছে');
+  cache.posts = cache.posts.filter(p=>p.id!==id);
+  if(currentTab==='posts') renderPosts(document.getElementById('mainContent'));
+  return true;
+}
+
+// ============================================================
+// STORIES
+// ============================================================
+function renderStories(el){
+  el.innerHTML = `
+    <div class="page-title">Stories</div>
+    <div class="page-sub">সব স্টোরি মডারেশন</div>
+    <div class="card-list" id="storiesList"></div>
+  `;
+  const wrap = document.getElementById('storiesList');
+  if(!cache.stories.length){ wrap.innerHTML = `<div class="empty-state"><div class="icon">🟣</div>কোনো স্টোরি নেই</div>`; return; }
+  wrap.innerHTML = cache.stories.map(s => `
+    <div class="item-card">
+      <div class="item-row">
+        <div class="avatar-circle">${(s.profiles?.name||'?')[0]}</div>
+        <div class="item-main">
+          <div class="item-name">${esc(s.profiles?.name||'Unknown')}</div>
+          <div class="item-meta">${s.created_at?new Date(s.created_at).toLocaleString('bn-BD'):''}</div>
+        </div>
+      </div>
+      ${s.caption?`<div class="post-text-preview">${esc(s.caption)}</div>`:''}
+      ${s.image_url?`<img src="${s.image_url}" class="post-img-preview">`:''}
+      <div class="item-actions">
+        <button class="mini-btn danger" onclick="deleteStory(${s.id})">🗑️ Delete Story</button>
+      </div>
+    </div>`).join('');
+}
+async function deleteStory(id){
+  if(!confirm('এই স্টোরি Delete করবে?')) return;
+  await doDeleteStory(id);
+}
+async function doDeleteStory(id){
+  const { error } = await sb.from('stories').delete().eq('id', id);
+  if(error){ toast('❌ '+error.message); return false; }
+  toast('🗑️ স্টোরি Delete হয়েছে');
+  cache.stories = cache.stories.filter(s=>s.id!==id);
+  if(currentTab==='stories') renderStories(document.getElementById('mainContent'));
+  return true;
+}
+
+// ============================================================
+// CHANGE REQUESTS
+// ============================================================
+const CR_FIELD_LABEL = { name:'নাম', dept:'বিভাগ', year:'বর্ষ' };
+function renderRequests(el){
+  el.innerHTML = `
+    <div class="page-title">Change Requests</div>
+    <div class="page-sub">নাম / বিভাগ / বর্ষ পরিবর্তনের আবেদন</div>
+    <div class="card-list" id="reqList"></div>
+  `;
+  const wrap = document.getElementById('reqList');
+  const list = [...cache.changeRequests].sort((a,b)=> (a.status==='pending'?0:1) - (b.status==='pending'?0:1));
+  if(!list.length){ wrap.innerHTML = `<div class="empty-state"><div class="icon">✏️</div>কোনো Change Request নেই</div>`; return; }
+  wrap.innerHTML = list.map(r => `
+    <div class="item-card">
+      <div class="item-name">${esc(r.profiles?.name||'Unknown')} <span class="badge ${r.status==='pending'?'pending':r.status==='approved'?'approved':'banned'}">${r.status}</span></div>
+      <div class="item-meta" style="margin-top:6px;">${CR_FIELD_LABEL[r.field]||r.field}: <b style="color:var(--text2);">${esc(r.old_value||'-')}</b> → <b style="color:var(--accent2);">${esc(r.new_value||'-')}</b></div>
+      ${r.reason?`<div class="post-text-preview">কারণ: ${esc(r.reason)}</div>`:''}
+      ${r.status==='pending'?`
+      <div class="item-actions">
+        <button class="mini-btn ok" onclick="resolveRequest(${r.id},'approved')">✅ Approve</button>
+        <button class="mini-btn danger" onclick="resolveRequest(${r.id},'rejected')">❌ Reject</button>
+      </div>`:''}
+    </div>`).join('');
+}
+// 🔒 Only these fields are ever allowed to flow from a change_request into
+// profiles. This is a second line of defense on top of the DB CHECK
+// constraint (change_requests_field_allowlist) — a request row can never be
+// used to overwrite role/status/id/anything else, no matter how it got in.
+const CHANGE_REQUEST_ALLOWED_FIELDS = ['name', 'dept', 'year'];
+async function resolveRequest(id, status){
+  const req = cache.changeRequests.find(r=>r.id===id); if(!req) return;
+  if(status==='approved'){
+    if(!CHANGE_REQUEST_ALLOWED_FIELDS.includes(req.field)){
+      toast('❌ Invalid field — এই request ignore করা হলো (সন্দেহজনক)');
+      return;
+    }
+    const upd = {}; upd[req.field] = req.new_value;
+    const { error: e1 } = await sb.from('profiles').update(upd).eq('id', req.user_id);
+    if(e1){ toast('❌ '+e1.message); return; }
+  }
+  const { error } = await sb.from('change_requests').update({ status, resolved_at:new Date().toISOString(), resolved_by:ME_ADMIN.id }).eq('id', id);
+  if(error){ toast('❌ '+error.message); return; }
+  toast(status==='approved'?'✅ Approve করা হয়েছে':'❌ Reject করা হয়েছে');
+  await loadAllData();
+}
+
+// ============================================================
+// REPORTS
+// ============================================================
+const REPORT_TYPE_LABEL = { post:'📝 Post', comment:'💬 Comment', user:'👤 User', story:'🟣 Story' };
+function renderReports(el){
+  el.innerHTML = `
+    <div class="page-title">Reports</div>
+    <div class="page-sub">রিপোর্ট করা কন্টেন্ট রিভিউ</div>
+    <div class="card-list" id="repList"></div>
+  `;
+  const wrap = document.getElementById('repList');
+  const list = [...cache.reports].sort((a,b)=> (a.status==='pending'?0:1) - (b.status==='pending'?0:1));
+  if(!list.length){ wrap.innerHTML = `<div class="empty-state"><div class="icon">🚩</div>কোনো Report নেই</div>`; return; }
+  wrap.innerHTML = list.map(r => {
+    const isPhoto = !!r.photo_url;
+    const src = r.source_type || r.type || 'unknown';
+    const srcId = r.source_id || r.target_id || '';
+    const label = isPhoto
+      ? `🖼️ Photo · ${REPORT_TYPE_LABEL[src]||src}`
+      : `${REPORT_TYPE_LABEL[src]||src}: ${esc(r.target_name||'-')}`;
+    const reporter = r.profiles?.name || r.profiles?.username || 'Unknown';
+    const when = r.created_at ? new Date(r.created_at).toLocaleString('bn-BD') : '';
+    const thumb = isPhoto
+      ? `<div style="margin-top:8px;"><img src="${esc(r.photo_url)}" style="max-width:180px;max-height:180px;border-radius:10px;border:1px solid var(--border2);object-fit:cover;cursor:pointer;" onclick="window.open('${esc(r.photo_url)}','_blank')" onerror="this.style.opacity=0.4;this.title='ছবি লোড হয়নি';" /></div>`
+      : '';
+    const noteHtml = r.note ? `<div class="post-text-preview">${esc(r.note)}</div>` : (r.details?`<div class="post-text-preview">${esc(r.details)}</div>`:'');
+    let actions = '';
+    if(r.status==='pending'){
+      const parts = [];
+      if(isPhoto){
+        if(src==='post' && srcId) parts.push(`<button class="mini-btn danger" onclick="deletePhotoAndResolve(${r.id}, 'post', '${srcId}')">🗑️ Delete Photo + Resolve</button>`);
+        else if(src==='comment' && srcId) parts.push(`<button class="mini-btn danger" onclick="deletePhotoAndResolve(${r.id}, 'comment', '${srcId}')">🗑️ Delete Photo + Resolve</button>`);
+        else parts.push(`<button class="mini-btn danger" onclick="resolveReport(${r.id})">🗑️ Mark Resolved</button>`);
+        parts.push(`<button class="mini-btn neutral" onclick="ignoreReport(${r.id})">🙈 Ignore</button>`);
+      } else {
+        if(src==='post') parts.push(`<button class="mini-btn danger" onclick="deletePostAndResolveReport('${srcId}', ${r.id})">🗑️ Post Delete + Resolve</button>`);
+        if(src==='story') parts.push(`<button class="mini-btn danger" onclick="deleteStoryAndResolveReport('${srcId}', ${r.id})">🗑️ Story Delete + Resolve</button>`);
+        parts.push(`<button class="mini-btn ok" onclick="resolveReport(${r.id})">✅ Resolve</button>`);
+        parts.push(`<button class="mini-btn neutral" onclick="dismissReport(${r.id})">🙈 Dismiss</button>`);
+      }
+      actions = `<div class="item-actions">${parts.join('')}</div>`;
+    }
+    return `
+    <div class="item-card">
+      <div class="item-name">${label} <span class="badge ${r.status==='pending'?'pending':'approved'}">${r.status}</span></div>
+      <div class="item-meta" style="margin-top:4px;">রিপোর্টার: ${esc(reporter)} · কারণ: ${esc(r.reason||'')}${when?` · ${esc(when)}`:''}</div>
+      ${thumb}
+      ${noteHtml}
+      ${actions}
+    </div>`;
+  }).join('');
+}
+async function ignoreReport(id){
+  const { error } = await sb.from('reports').update({ status:'reviewed', resolved_at:new Date().toISOString(), resolved_by:ME_ADMIN.id }).eq('id', id);
+  if(error){ toast('❌ '+error.message); return; }
+  toast('🙈 Ignore করা হয়েছে');
+  await loadAllData();
+}
+async function deletePhotoAndResolve(reportId, sourceType, sourceId){
+  if(!confirm('এই ছবি delete করবে এবং Report Resolve করবে?')) return;
+  let ok = false;
+  try{
+    if(sourceType==='post'){
+      const { error } = await sb.from('posts').update({ image_url: null }).eq('id', sourceId);
+      if(error) throw error;
+      ok = true;
+    } else if(sourceType==='comment'){
+      // Try common column names — first image_url, then image
+      let r = await sb.from('comments').update({ image_url: null }).eq('id', sourceId);
+      if(r.error){
+        r = await sb.from('comments').update({ image: null }).eq('id', sourceId);
+      }
+      if(r.error) throw r.error;
+      ok = true;
+    }
+  }catch(e){
+    toast('❌ ছবি delete হয়নি: '+(e.message||e));
+    return;
+  }
+  if(ok) await resolveReport(reportId);
+}
+async function resolveReport(id){
+  const { error } = await sb.from('reports').update({ status:'resolved', resolved_at:new Date().toISOString(), resolved_by:ME_ADMIN.id }).eq('id', id);
+  if(error){ toast('❌ '+error.message); return; }
+  toast('✅ Report সমাধান হয়েছে');
+  await loadAllData();
+}
+// Deletes the reported post/story first — resolveReport only runs if that delete
+// actually succeeded, so a failed delete no longer silently marks the report resolved.
+async function deletePostAndResolveReport(postId, reportId){
+  if(!confirm('এই পোস্ট Delete করবে এবং Report Resolve করবে?')) return;
+  const ok = await doDeletePost(postId);
+  if(ok) await resolveReport(reportId);
+}
+async function deleteStoryAndResolveReport(storyId, reportId){
+  if(!confirm('এই স্টোরি Delete করবে এবং Report Resolve করবে?')) return;
+  const ok = await doDeleteStory(storyId);
+  if(ok) await resolveReport(reportId);
+}
+async function dismissReport(id){
+  const { error } = await sb.from('reports').update({ status:'dismissed', resolved_at:new Date().toISOString(), resolved_by:ME_ADMIN.id }).eq('id', id);
+  if(error){ toast('❌ '+error.message); return; }
+  toast('🙈 Report Dismiss করা হয়েছে');
+  await loadAllData();
+}
+
+// ============================================================
+// INVITES ("Add User")
+// ============================================================
+function renderInvites(el){
+  el.innerHTML = `
+    <div class="page-title">Add User</div>
+    <div class="page-sub">নতুন ইউজার pre-register করো — যখন সে ওই email দিয়ে সাইন আপ করবে, তখন তার আবেদন এখানে দেখা যাবে ও Approve করতে পারবে সহজে। (Security কারণে সরাসরি password তৈরি করা যায় না — signup নিজে করতে হয়)</div>
+    <div class="item-card">
+      <div class="field"><label>Email *</label><input id="invEmail" placeholder="student@gmail.com"></div>
+      <div class="field"><label>নাম</label><input id="invName" placeholder="পূর্ণ নাম"></div>
+      <div class="field"><label>বিভাগ</label><input id="invDept" placeholder="Physics"></div>
+      <div class="field"><label>বর্ষ</label><input id="invYear" placeholder="1st / 2nd..."></div>
+      <div class="field">
+        <label>Role</label>
+        <select id="invRole">
+          <option value="student">Student</option>
+          <option value="cr">CR</option>
+          <option value="teacher">Teacher</option>
+          <option value="admin">Admin</option>
+        </select>
+      </div>
+      <button class="btn-primary" onclick="addInvite()">➕ Add করো</button>
+    </div>
+    <div style="margin-top:20px;font-size:12.5px;font-weight:700;color:var(--text2);">Pre-registered তালিকা</div>
+    <div class="card-list" id="inviteList" style="margin-top:8px;"></div>
+  `;
+  const wrap = document.getElementById('inviteList');
+  if(!cache.invites.length){ wrap.innerHTML = `<div class="empty-state"><div class="icon">➕</div>কোনো Invite নেই</div>`; return; }
+  wrap.innerHTML = cache.invites.map(i => `
+    <div class="item-card">
+      <div class="item-name">${esc(i.name||i.email)} <span class="badge ${i.used?'approved':'pending'}">${i.used?'Signed up':'Waiting'}</span></div>
+      <div class="item-meta">${esc(i.email)} · ${esc(i.dept||'-')} · ${roleLabel(i.role)}${i.used_at?` · ${new Date(i.used_at).toLocaleDateString('bn-BD')} তারিখে signed up`:''}</div>
+      <div class="item-actions"><button class="mini-btn danger" onclick="deleteInvite(${i.id})">🗑️ Remove</button></div>
+    </div>`).join('');
+}
+async function addInvite(){
+  const email = document.getElementById('invEmail').value.trim();
+  if(!email){ toast('❌ Email দাও'); return; }
+  const payload = {
+    email, name: document.getElementById('invName').value.trim(),
+    dept: document.getElementById('invDept').value.trim(),
+    year: document.getElementById('invYear').value.trim(),
+    role: document.getElementById('invRole').value,
+    invited_by: ME_ADMIN.id
+  };
+  const { error } = await sb.from('admin_invites').insert(payload);
+  if(error){ toast('❌ '+error.message); return; }
+  toast('✅ Add করা হয়েছে');
+  await loadAllData();
+}
+async function deleteInvite(id){
+  const { error } = await sb.from('admin_invites').delete().eq('id', id);
+  if(error){ toast('❌ '+error.message); return; }
+  await loadAllData();
+}
+</script>
+</body>
+</html>
